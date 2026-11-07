@@ -7,7 +7,7 @@ A modern, animated UI library for Roblox executors (supports Fluent icons, MiniM
 ## Loading the Library
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))() -- or require the module
+local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))() -- or require the module
 -- Alternatively after load: getgenv().Ssamachi or Ssamachi
 ```
 
@@ -18,7 +18,7 @@ The library returns the main `Library` table and also sets `getgenv().Ssamachi =
 ## Creating a Window
 
 ```lua
-local Window = Library:CreateWindow({
+local Window = Ssamachi:CreateWindow({
     Title = "My Script",              -- Required. Main window title
     SubTitle = "v1.0",                -- Optional. Shown next to title
     Icon = "home",                    -- Optional. Icon name (Fluent) or rbxassetid:// / http url
@@ -291,7 +291,7 @@ Non-interactive text block. Supports rich text via MiniMessage.
 ## Notifications
 
 ```lua
-Library:Notify({
+Ssamachi:Notify({
     Title = "Success",
     Content = "Feature enabled",
     SubContent = "You can now use it",  -- optional smaller text
@@ -306,7 +306,7 @@ Notifications appear in the bottom-right and can be closed manually.
 ## Minimizer Button
 
 ```lua
-Library:CreateMinimizer({
+Ssamachi:CreateMinimizer({
     Size = UDim2.fromOffset(40, 40),
     Position = UDim2.new(0, 20, 0, 20),
     Icon = "rbxassetid://10734897102", -- or Fluent name
@@ -326,7 +326,7 @@ Creates a floating button that toggles `Window:Minimize()`. Useful on mobile.
 Currently only the **Darker** theme is implemented and forced.
 
 ```lua
-Library:SetTheme("Darker") -- does nothing else; always Darker
+Ssamachi:SetTheme("Darker") -- does nothing else; always Darker
 ```
 
 All colors are defined in the internal `Themes` table (Accent, AcrylicMain, Text, SubText, etc.).
@@ -338,8 +338,8 @@ All colors are defined in the internal `Themes` table (Accent, AcrylicMain, Text
 Uses Fluent icons by default (loaded from remote).
 
 ```lua
-Library:GetIcon("home")           -- returns asset table or nil
-Library:SetIcon(imageLabel, "home") -- applies to an ImageLabel
+Ssamachi:GetIcon("home")           -- returns asset table or nil
+Ssamachi:SetIcon(imageLabel, "home") -- applies to an ImageLabel
 ```
 
 You can also pass raw `"rbxassetid://..."` or `"http..."` strings anywhere an Icon is accepted.
@@ -360,7 +360,7 @@ Supported types: Toggle, Slider, Dropdown, Colorpicker, Keybind, Input.
 You can also use SaveManager manually (advanced):
 
 ```lua
--- After setting Library.AutoConfig or calling SaveManager:SetLibrary(Library)
+-- After setting Ssamachi.AutoConfig or calling SaveManager:SetLibrary(Ssamachi)
 SaveManager:SetFolder("MyFolder")
 SaveManager:Save("MyConfig")
 SaveManager:Load("MyConfig")
@@ -392,7 +392,7 @@ Supported color names: black, dark_blue, dark_green, dark_aqua, dark_red, dark_p
 ```lua
 local Library = loadstring(...)()
 
-local Window = Library:CreateWindow({
+local Window = Ssamachi:CreateWindow({
     Title = "Example Hub",
     SubTitle = "by Me",
     Icon = "box",
@@ -422,7 +422,7 @@ Sec:AddSlider("SpeedValue", {
 })
 
 -- Minimize key is LeftControl by default
-Library:CreateMinimizer({Draggable = true})
+Ssamachi:CreateMinimizer({Draggable = true})
 ```
 
 ---
