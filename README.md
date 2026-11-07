@@ -1,3 +1,4 @@
+```markdown
 # Ssamachi UI Library
 
 A clean, modern Roblox UI library with smooth animations, built-in search, built-in minimizer, config saving, and rich element support.
@@ -7,8 +8,6 @@ A clean, modern Roblox UI library with smooth animations, built-in search, built
 ```lua
 local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))()
 ```
-
----
 
 ## Creating a Window
 
@@ -21,8 +20,8 @@ local Window = Ssamachi:CreateWindow({
     Size = UDim2.fromOffset(600, 400),
     TabWidth = 180,
     MinimizeKey = Enum.KeyCode.LeftControl,
-    AutoConfig = "myconfig",
-    Minimizer = true, -- New
+    ConfigName = "myconfig",
+    Minimizer = true,
 })
 ```
 
@@ -35,21 +34,17 @@ local Window = Ssamachi:CreateWindow({
 | `Size` | `UDim2` | `nil` | Initial window size |
 | `TabWidth` | `number` | `nil` | Sidebar width in pixels |
 | `MinimizeKey` | `Enum.KeyCode` | `LeftControl` | Key to hide/show the UI |
-| `AutoConfig` | `string` | `nil` | Enables automatic config saving with this name |
+| `ConfigName` | `string` | `nil` | Enables automatic config saving with this name |
 | `Minimizer` | `boolean` | `true` (Mobile) / `true` (PC) | Toggles the built-in floating minimizer button. On Mobile, this is always `true`. |
 
-> **Search is always enabled** — no configuration required.  
-> Only **one window** can be created per script.
+## Built-in Minimizer
 
-### Built-in Minimizer
+The minimizer is automatically created when the window is opened. It is a floating, draggable `50x50` button positioned at the top-right corner of the screen.
 
-The minimizer is automatically created when the window is opened. It is a floating, draggable `40x40` button positioned at the top-right corner of the screen.
 - Its icon is automatically set to the `Image` specified in `CreateWindow`. If no `Image` is provided, no icon is shown.
-- Dragging is always enabled.
+- Dragging is always enabled, and dragging will not accidentally click the button.
 - Clicking it minimizes/restores the main window.
 - You no longer need to call `Ssamachi:CreateMinimizer()` manually.
-
----
 
 ## Tabs
 
@@ -68,11 +63,9 @@ local Tab = Window:AddTab({
 ### Selecting a Tab Programmatically
 
 ```lua
-Window:SelectTab(Tab)  -- by Tab object
-Window:SelectTab(1)    -- by index
+Window:SelectTab(Tab)
+Window:SelectTab("Main")
 ```
-
----
 
 ## SubTabs
 
@@ -90,8 +83,6 @@ local SubTab = Tab:AddSubTab({
 
 When a SubTab exists, `Tab:AddSection(...)` automatically routes to the currently selected SubTab.
 
----
-
 ## Sections
 
 ```lua
@@ -108,8 +99,6 @@ local Section = Tab:AddSection({
 
 Sections can also be added to a SubTab via `SubTab:AddSection(...)`.
 
----
-
 ## Elements
 
 Every element accepts these **common** arguments unless noted otherwise:
@@ -120,29 +109,25 @@ Every element accepts these **common** arguments unless noted otherwise:
 | `Description` | `string` | `nil` | Secondary description |
 | `Icon` | `string \| number` | `nil` | Element icon |
 
-The first argument to every `Add*` method is a **unique numeric index** used by the config system. Pick any unique number per element.
-
----
+The first argument to every `Add*` method is a **unique string index** used by the config system. Pick any unique string per element.
 
 ### Button
 
 ```lua
-Section:AddButton(1, {
+Section:AddButton("ClickMe", {
     Title = "Click Me",
     Description = "Does something cool",
     Icon = "cursor-click-20-filled",
-    Callback = function()
+    Callback = function(Value)
         print("clicked")
     end,
 })
 ```
 
----
-
 ### Toggle
 
 ```lua
-local Toggle = Section:AddToggle(2, {
+local Toggle = Section:AddToggle("ToggleKey", {
     Title = "Enabled",
     Description = "Turn it on or off",
     Default = false,
@@ -160,12 +145,10 @@ Toggle:OnChanged(function(Value) end)
 Toggle:Destroy()
 ```
 
----
-
 ### Slider
 
 ```lua
-local Slider = Section:AddSlider(3, {
+local Slider = Section:AddSlider("SliderKey", {
     Title = "Speed",
     Default = 16,
     Min = 0,
@@ -183,12 +166,10 @@ Slider:OnChanged(function(Value) end)
 Slider:Destroy()
 ```
 
----
-
 ### Dropdown
 
 ```lua
-local Dropdown = Section:AddDropdown(4, {
+local Dropdown = Section:AddDropdown("DropdownKey", {
     Title = "Mode",
     Values = { "One", "Two", "Three" },
     Default = "One",
@@ -209,17 +190,15 @@ Dropdown:OnChanged(function(Value) end)
 Dropdown:Destroy()
 ```
 
----
-
 ### Keybind
 
 ```lua
-local Keybind = Section:AddKeybind(5, {
+local Keybind = Section:AddKeybind("KeybindKey", {
     Title = "Aim Key",
     Default = "E",
     Mode = "Toggle",
-    Callback = function(State) end,
-    ChangedCallback = function(NewKey) end,
+    Callback = function(Value) end,
+    ChangedCallback = function(Value) end,
 })
 ```
 
@@ -234,21 +213,19 @@ local Keybind = Section:AddKeybind(5, {
 ```lua
 Keybind:GetState()
 Keybind:SetValue("F", "Hold")
-Keybind:OnChanged(function(Key) end)
-Keybind:OnClick(function(State) end)
+Keybind:OnChanged(function(Value) end)
+Keybind:OnClick(function(Value) end)
 Keybind:Destroy()
 ```
-
----
 
 ### Colorpicker
 
 ```lua
-local Picker = Section:AddColorpicker(6, {
+local Picker = Section:AddColorpicker("ColorKey", {
     Title = "Accent Color",
     Default = Color3.fromRGB(255, 0, 0),
     Transparency = true,
-    Callback = function(Color) end,
+    Callback = function(Value) end,
 })
 ```
 
@@ -256,24 +233,22 @@ local Picker = Section:AddColorpicker(6, {
 
 ```lua
 Picker:SetValueRGB(Color3.fromRGB(0, 255, 0), 0.5)
-Picker:SetValue({ 0.5, 1, 1 }, 0)  -- HSV + transparency
-Picker:OnChanged(function(Color) end)
+Picker:SetValue({ 0.5, 1, 1 }, 0)
+Picker:OnChanged(function(Value) end)
 Picker:Destroy()
 ```
-
----
 
 ### Input
 
 ```lua
-local Input = Section:AddInput(7, {
+local Input = Section:AddInput("InputKey", {
     Title = "Name",
     Default = "",
     Placeholder = "Enter your name...",
     Numeric = false,
     Finished = false,
     MaxLength = 32,
-    Callback = function(Text) end,
+    Callback = function(Value) end,
 })
 ```
 
@@ -281,26 +256,22 @@ local Input = Section:AddInput(7, {
 
 ```lua
 Input:SetValue("Hello")
-Input:OnChanged(function(Text) end)
+Input:OnChanged(function(Value) end)
 Input:Destroy()
 ```
-
----
 
 ### Paragraph
 
 ```lua
-Section:AddParagraph(8, {
+Section:AddParagraph("ParagraphKey", {
     Title = "Information",
     Content = "This is a paragraph of <b>rich</b> text.",
 })
 ```
 
----
-
 ## Icons
 
-`Ssamachi:GetIcon(Name)` resolves a named icon to a **spritesheet URL string**:
+`Ssamachi:GetIcon(Name)` resolves a named icon to a **spritesheet URL string**.
 `Ssamachi:ApplyIcon(Instance, Name)` applies the full icon (image + rect slicing) to an existing `ImageLabel`.
 
 | Input Type | Resolution |
@@ -308,8 +279,6 @@ Section:AddParagraph(8, {
 | `number` | `rbxassetid://<number>` |
 | `"rbxassetid://..."` / `"https://..."` | passed through as-is |
 | any other `string` | resolved via the Fluent icon provider |
-
----
 
 ## Notifications
 
@@ -322,8 +291,6 @@ Ssamachi:Notify({
 })
 ```
 
----
-
 ## Dialogs
 
 ```lua
@@ -331,13 +298,11 @@ Window:Dialog({
     Title = "Confirm Action",
     Content = "Are you sure you want to continue?",
     Buttons = {
-        { Title = "Yes", Callback = function() end },
+        { Title = "Yes", Callback = function(Value) end },
         { Title = "No" },
     },
 })
 ```
-
----
 
 ## Config Save / Load
 
@@ -351,17 +316,18 @@ Ssamachi.SaveManager:Load("config1")
 
 ### Auto-Save
 
-Pass `AutoConfig` when creating a window. Every element change instantly triggers an autosave, and loading is deferred until all elements are registered.
+Pass `ConfigName` when creating a window. Every element change instantly triggers an autosave, and loading is deferred until all elements are registered.
 
 ```lua
 local Window = Ssamachi:CreateWindow({
     Title = "My Hub",
-    AutoConfig = "default",
+    ConfigName = "default",
 })
 ```
 
 ### Ignoring Indexes
 
 ```lua
-Ssamachi.SaveManager:SetIgnoreIndexes({ 1, 2, 3 })
+Ssamachi.SaveManager:SetIgnoreIndexes({ "ToggleKey", "SliderKey" })
+```
 ```
