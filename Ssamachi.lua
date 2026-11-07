@@ -43,7 +43,7 @@ local Themes = {
 	Keybind = Color3.fromRGB(120, 120, 120),
 	Input = Color3.fromRGB(160, 160, 160),
 	InputIndicator = Color3.fromRGB(150, 150, 150),
-	InputIndicatorFocus = Color3.fromRGB(56, 109, 223), -- Accent-like for focus
+	InputIndicatorFocus = Color3.fromRGB(56, 109, 223),
 	Dialog = Color3.fromRGB(35, 35, 35),
 	DialogHolder = Color3.fromRGB(25, 25, 25),
 	DialogHolderLine = Color3.fromRGB(20, 20, 20),
@@ -1231,11 +1231,11 @@ Components.Element = (function()
 		}, {
 			New("UIListLayout", {
 				SortOrder = Enum.SortOrder.LayoutOrder,
-				VerticalAlignment = Enum.VerticalAlignment.Center,
+				VerticalAlignment = Enum.VerticalAlignment.Top,
 			}),
 			New("UIPadding", {
-				PaddingBottom = UDim.new(0, 13),
-				PaddingTop = UDim.new(0, 13),
+				PaddingBottom = UDim.new(0, 11),
+				PaddingTop = UDim.new(0, 11),
 			}),
 			Element.Header,
 			Element.DescLabel,
@@ -3540,7 +3540,7 @@ Components.Window = (function()
 			end
 
 			if Window.UserInfoHeight then
-				local TabFrameSize = Window.TabFrame and Window.TabFrame.Size.Y.Offset or 0
+				local TabFrameSize = Window.TabFrame and Window.TabFrame.AbsoluteSize.Y or 0
 				local userInfoTop = Window.UserInfoTop and 0 or (TabFrameSize - Window.UserInfoHeight - 2)
 				local userInfoBottom = userInfoTop + Window.UserInfoHeight
 
@@ -4044,13 +4044,11 @@ ElementsTable.Dropdown = (function()
 			Text = "",
 			TextColor3 = Color3.fromRGB(240, 240, 240),
 			TextSize = 14,
-			AutomaticSize = Enum.AutomaticSize.Y,
+			Size = UDim2.new(1, -40, 1, 0),
+			Position = UDim2.new(0, 8, 0, 0),
+			BackgroundTransparency = 1,
 			TextYAlignment = Enum.TextYAlignment.Center,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Size = UDim2.new(1, -40, 0.5, 0),
-			Position = UDim2.new(0, 8, 0.5, 0),
-			AnchorPoint = Vector2.new(0, 0.5),
-			BackgroundTransparency = 1,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			ThemeTag = {
 				TextColor3 = "Text",
