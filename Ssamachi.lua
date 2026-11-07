@@ -71,9 +71,7 @@ local Library = {
     DialogOpen = false,
     MinimizeKeybind = nil,
     MinimizeKey = Enum.KeyCode.LeftControl,
-    ElementsReady = false,
-    LoadingConfig = false,
-    SettingLoaded = false,
+    ConfigLoaded = false,
     Minimizer = nil,
 }
 
@@ -5507,11 +5505,11 @@ local function AttachElementMethods(Target)
 
                 local CreatedElement = ElementComponent:New(Idx, Config)
 
-                if CreatedElement and CreatedElement.OnChanged and Library.AutoConfig then
+                if CreatedElement and CreatedElement.OnChanged and Library.ConfigName then
                     CreatedElement:OnChanged(function()
                         task.defer(function()
-                            if Library.ElementsReady and not Library.LoadingConfig and Library.SettingLoaded then
-                                SaveManager:Save(Library.AutoConfig)
+                            if Library.ConfigLoaded then
+                                SaveManager:Save(Library.ConfigName)
                             end
                         end)
                     end)
@@ -5526,315 +5524,156 @@ end
 Library.AttachElementMethods = AttachElementMethods
 
 do
-    SaveManager.Folder = "Ssamachi"
-    SaveManager.Ignore = {}
+	SaveManager.Folder = "Ssamachi"
+	SaveManager.Ignore = {}
+	SaveManager.Parser = {
+		Toggle = {
+			Save = function(Idx, Object)
+				return { Type = "Toggle", Idx = Idx, Value = Object.Value }
+			end,
+			Load = function(Idx, Data)
+				if SaveManager.Options[Idx] then
+					SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
+				end
+			end,
+		},
+		Slider = {
+			Save = function(Idx, Object)
+				return { Type = "Slider", Idx = Idx, Value = tostring(Object.Value) }
+			end,
+			Load = function(Idx, Data)
+				if SaveManager.Options[Idx] then
+					SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
+				end
+			end,
+		},
+		Dropdown = {
+			Save = function(Idx, Object)
+				return { Type = "Dropdown", Idx = Idx, Value = Object.Value, Multi = Object.Multi }
+			end,
+			Load = function(Idx, Data)
+				if SaveManager.Options[Idx] then
+					SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
+				end
+			end,
+		},
+		Colorpicker = {
+			Save = function(Idx, Object)
+				return { Type = "Colorpicker", Idx = Idx, Value = Object.Value:ToHex(), Transparency = Object.Transparency }
+			end,
+			Load = function(Idx, Data)
+				if SaveManager.Options[Idx] then
+					SaveManager.Options[Idx]:SetValueRGB(Color3.fromHex(Data.Value or Data.value), Data.Transparency or Data.transparency)
+				end
+			end,
+		},
+		Keybind = {
+			Save = function(Idx, Object)
+				return { Type = "Keybind", Idx = Idx, Mode = Object.Mode, Key = Object.Value }
+			end,
+			Load = function(Idx, Data)
+				if SaveManager.Options[Idx] then
+					SaveManager.Options[Idx]:SetValue(Data.Key or Data.key, Data.Mode or Data.mode)
+				end
+			end,
+		},
+		Input = {
+			Save = function(Idx, Object)
+				return { Type = "Input", Idx = Idx, Text = Object.Value }
+			end,
+			Load = function(Idx, Data)
+				if SaveManager.Options[Idx] and type(Data.Text or Data.text) == "string" then
+					SaveManager.Options[Idx]:SetValue(Data.Text or Data.text)
+				end
+			end,
+		},
+	}
 
-    local function Pick(Data, ...)
-        for _, Key in { ... } do
-            local V = Data[Key]
+	function SaveManager:SetIgnoreIndexes(List)
+		for _, Key in List do
+			self.Ignore[Key] = true
+		end
+	end
 
-            if V ~= nil then
-                return V
-            end
-        end
+	function SaveManager:Save(Name)
+		if not Name then
+			return false
+		end
 
-        return nil
-    end
+		local FullPath = self.Folder .. "/" .. Name .. ".json"
+		local Data = {
+			Objects = {}
+		}
 
-    SaveManager.Parser = {
-        Toggle = {
-            Save = function(Idx, Object)
-                return { Type = "Toggle", Idx = Idx, Value = Object.Value == true }
-            end,
-            Load = function(Idx, Data)
-                local Option = SaveManager.Options and SaveManager.Options[Idx]
-                if not Option then
-                    Option = Library.Options and Library.Options[Idx]
-                end
-                if Option and Option.SetValue then
-                    local V = Pick(Data, "Value", "value")
-                    if V ~= nil then
-                        Option:SetValue(V == true or V == "true" or V == 1)
-                    end
-                end
-            end,
-        },
-        Slider = {
-            Save = function(Idx, Object)
-                return { Type = "Slider", Idx = Idx, Value = tonumber(Object.Value) or Object.Value }
-            end,
-            Load = function(Idx, Data)
-                local Option = SaveManager.Options and SaveManager.Options[Idx]
-                if not Option then
-                    Option = Library.Options and Library.Options[Idx]
-                end
-                if Option and Option.SetValue then
-                    local V = Pick(Data, "Value", "value")
-                    if V ~= nil then
-                        Option:SetValue(tonumber(V) or V)
-                    end
-                end
-            end,
-        },
-        Dropdown = {
-            Save = function(Idx, Object)
-                return { Type = "Dropdown", Idx = Idx, Value = Object.Value, Multi = Object.Multi }
-            end,
-            Load = function(Idx, Data)
-                local Option = SaveManager.Options and SaveManager.Options[Idx]
-                if not Option then
-                    Option = Library.Options and Library.Options[Idx]
-                end
-                if Option and Option.SetValue then
-                    local V = Pick(Data, "Value", "value")
-                    if V ~= nil then
-                        Option:SetValue(V)
-                    end
-                end
-            end,
-        },
-        Colorpicker = {
-            Save = function(Idx, Object)
-                return {
-                    Type = "Colorpicker",
-                    Idx = Idx,
-                    Value = Object.Value:ToHex(),
-                    Transparency = Object.Transparency,
-                }
-            end,
-            Load = function(Idx, Data)
-                local Option = SaveManager.Options and SaveManager.Options[Idx]
-                if not Option then
-                    Option = Library.Options and Library.Options[Idx]
-                end
-                if Option and Option.SetValueRGB then
-                    local Hex = Pick(Data, "Value", "value")
-                    local Trans = Pick(Data, "Transparency", "transparency") or 0
-                    if Hex then
-                        local Ok, Color = pcall(Color3.fromHex, Hex)
-                        if Ok and Color then
-                            Option:SetValueRGB(Color, Trans)
-                        end
-                    end
-                end
-            end,
-        },
-        Keybind = {
-            Save = function(Idx, Object)
-                return { Type = "Keybind", Idx = Idx, Mode = Object.Mode, Key = Object.Value }
-            end,
-            Load = function(Idx, Data)
-                local Option = SaveManager.Options and SaveManager.Options[Idx]
-                if not Option then
-                    Option = Library.Options and Library.Options[Idx]
-                end
-                if Option and Option.SetValue then
-                    local Key = Pick(Data, "Key", "key")
-                    local Mode = Pick(Data, "Mode", "mode")
-                    if Key then
-                        Option:SetValue(Key, Mode)
-                    end
-                end
-            end,
-        },
-        Input = {
-            Save = function(Idx, Object)
-                return { Type = "Input", Idx = Idx, Text = tostring(Object.Value or "") }
-            end,
-            Load = function(Idx, Data)
-                local Option = SaveManager.Options and SaveManager.Options[Idx]
-                if not Option then
-                    Option = Library.Options and Library.Options[Idx]
-                end
-                local Text = Pick(Data, "Text", "text")
-                if Option and Option.SetValue and type(Text) == "string" then
-                    Option:SetValue(Text)
-                end
-            end,
-        },
-    }
+		for Idx, Option in SaveManager.Options do
+			if self.Parser[Option.Type] and not self.Ignore[Idx] then
+				table.insert(Data.Objects, self.Parser[Option.Type].Save(Idx, Option))
+			end
+		end
 
-    function SaveManager:SetIgnoreIndexes(List)
-        for _, Key in List do
-            self.Ignore[Key] = true
-        end
-    end
+		local Success, Encoded = pcall(HttpService.JSONEncode, HttpService, Data)
 
-    function SaveManager:SetFolder(Folder)
-        self.Folder = Folder
+		if not Success then
+			return false
+		end
 
-        self:BuildFolderTree()
-    end
+		writefile(FullPath, Encoded)
+		return true
+	end
 
-    function SaveManager:Save(Name)
+	function SaveManager:Load(Name)
         if not Name then
-            return false, "no config file is selected"
-        end
-
-        if Library.LoadingConfig then
-            return false, "loading in progress"
-        end
-
-        self:BuildFolderTree()
-
-        local FullPath = self.Folder .. "/" .. Name .. ".json"
-        local Data = { Objects = {} }
-        local Options = self.Options or Library.Options or {}
-
-        for Idx, Option in Options do
-            if Option and Option.Type and self.Parser[Option.Type] and not self.Ignore[Idx] then
-                local Ok, Saved = pcall(self.Parser[Option.Type].Save, Idx, Option)
-
-                if Ok and Saved then
-                    table.insert(Data.Objects, Saved)
-                end
-            end
-        end
-
-        local Success, Encoded = pcall(HttpService.JSONEncode, HttpService, Data)
-        if not Success then
-            return false, "failed to encode data"
-        end
-
-        local WriteOk, WriteErr = pcall(writefile, FullPath, Encoded)
-        if not WriteOk then
-            return false, tostring(WriteErr)
-        end
-
-        return true
-    end
-
-    function SaveManager:Load(Name)
-        if not Name then
-            return false, "no config file is selected"
-        end
-
-        self.Options = Library.Options
-
-        if not Library.ElementsReady then
-            task.defer(function()
-                SaveManager:Load(Name)
-            end)
-
-            return false, "elements not ready"
+            return false
         end
 
         local File = self.Folder .. "/" .. Name .. ".json"
 
         if not isfile(File) then
-            Library.SettingLoaded = true
-
-            if Ssamachi then
-                Ssamachi.SettingLoaded = true
-            end
-
-            return false, "Create Config Save File"
+            return false
         end
 
         local Success, Decoded = pcall(HttpService.JSONDecode, HttpService, readfile(File))
-        if not Success or type(Decoded) ~= "table" then
-            Library.SettingLoaded = true
-            return false, "decode error"
+
+        if not Success then
+            return false
         end
 
         local Objects = Decoded.Objects or Decoded.objects or {}
-        local OptionCount = 0
 
-        for _ in Library.Options or {} do
-            OptionCount = OptionCount + 1
-        end
+        for _, Option in Objects do
+            local OptionType = Option.Type or Option.type
+            local OptionIdx = Option.Idx or Option.idx
 
-        if #Objects > 0 and OptionCount == 0 then
-            if not self._EmptyRetry then
-                self._EmptyRetry = 0
-            end
-
-            self._EmptyRetry = self._EmptyRetry + 1
-
-            if self._EmptyRetry <= 15 then
-                task.defer(function()
-                    SaveManager:Load(Name)
+            if self.Parser[OptionType] and not self.Ignore[OptionIdx] then
+                task.spawn(function()
+                    self.Parser[OptionType].Load(OptionIdx, Option)
                 end)
-
-                return false, "options not registered yet"
-            end
-
-            Library.SettingLoaded = true
-            self._EmptyRetry = 0
-
-            return false, "no options registered"
-        end
-
-        self._EmptyRetry = 0
-
-        Library.LoadingConfig = true
-        self.Options = Library.Options
-
-        local Applied = 0
-        local Missing = 0
-
-        for _, OptionData in Objects do
-            local OptionType = OptionData.Type or OptionData.type
-            local OptionIdx = OptionData.Idx or OptionData.idx
-
-            if OptionType and OptionIdx and self.Parser[OptionType] and not self.Ignore[OptionIdx] then
-                local Exists = Library.Options and Library.Options[OptionIdx]
-
-                if Exists then
-                    local Ok, Err = pcall(function()
-                        self.Parser[OptionType].Load(OptionIdx, OptionData)
-                    end)
-                    if Ok then
-                        Applied = Applied + 1
-                    end
-                else
-                    Missing = Missing + 1
-                end
             end
         end
 
-        if Missing > 0 and not self._RetriedLoad then
-            self._RetriedLoad = true
-
-            task.defer(function()
-                Library.LoadingConfig = false
-                SaveManager:Load(Name)
-                self._RetriedLoad = false
-            end)
-
-            return false, "retrying for late options"
-        end
-
-        self._RetriedLoad = false
-
-        task.delay(0.25, function()
-            Library.LoadingConfig = false
-            Library.SettingLoaded = true
-
-            if Ssamachi then
-                Ssamachi.SettingLoaded = true
-            end
-        end)
-
-        return true, Decoded, Applied
+        Library.ConfigLoaded = true
+        return true
     end
 
-    function SaveManager:BuildFolderTree()
-        local Paths = { self.Folder, self.Folder .. "/" }
+	function SaveManager:BuildFolderTree()
+		local Paths = {
+			self.Folder,
+			self.Folder .. "/"
+		}
 
-        for _, Str in Paths do
-            if not isfolder(Str) then
-                makefolder(Str)
-            end
-        end
-    end
+		for _, Str in Paths do
+			if not isfolder(Str) then
+				makefolder(Str)
+			end
+		end
+	end
 
-    function SaveManager:SetLibrary(Lib)
-        self.Library = Lib
-        self.Options = Lib.Options
-    end
+	function SaveManager:SetLibrary(Lib)
+		self.Library = Lib
+		self.Options = Lib.Options
+	end
 
-    SaveManager:BuildFolderTree()
+	SaveManager:BuildFolderTree()
 end
 
 Library.SaveManager = SaveManager
@@ -5870,8 +5709,8 @@ function Library:CreateWindow(Config)
 
     Library:SetTheme("Darker")
 
-    if Config.AutoConfig then
-        Library.AutoConfig = tostring(Config.AutoConfig)
+    if Config.ConfigName then
+        Library.ConfigName = tostring(Config.ConfigName)
 
         SaveManager:SetLibrary(Library)
     end
@@ -5885,65 +5724,12 @@ function Library:CreateWindow(Config)
             Window:SelectTab(1)
         end
 
-        Library.ElementsReady = true
-
-        if Library.AutoConfig then
-            Library.SettingLoaded = false
-            Library.LoadingConfig = true
-
-            SaveManager:BuildFolderTree()
+        if Library.ConfigName then
             SaveManager:SetLibrary(Library)
-
-            task.spawn(function()
-                local Deadline = tick() + 5
-                local LastCount = 0
-                local Stable = 0
-
-                while tick() < Deadline do
-                    local Count = 0
-
-                    for _ in Library.Options do
-                        Count = Count + 1
-                    end
-
-                    if Count > 0 and Count == LastCount then
-                        Stable = Stable + 1
-                        if Stable >= 5 then
-                            break
-                        end
-                    else
-                        Stable = 0
-                    end
-
-                    LastCount = Count
-                    task.wait()
-                end
-
-                SaveManager:SetLibrary(Library)
-
-                local Ok, Result, Applied = SaveManager:Load(Library.AutoConfig)
-
-                task.delay(0.5, function()
-                    if not Library.SettingLoaded then
-                        Library.LoadingConfig = false
-                        Library.SettingLoaded = true
-
-                        if Ssamachi then
-                            Ssamachi.SettingLoaded = true
-                        end
-                    end
-                end)
-            end)
         end
     end)
 
-    local ShowMinimizer = true
-
-    if not Mobile then
-        if Config.Minimizer ~= nil then
-            ShowMinimizer = Config.Minimizer
-        end
-    end
+    local ShowMinimizer = Mobile or Config.Minimizer
 
     if ShowMinimizer and not Library.Minimizer then
         local ParentGui = Library.GUI or GUI
@@ -6070,6 +5856,24 @@ function Library:CreateWindow(Config)
     end
 
     return Window
+end
+
+function Library:LoadConfiguration(Name)
+    Name = Name or Library.ConfigName
+
+    if not Name then
+        return false, "no config name (pass ConfigName to CreateWindow or Name here)"
+    end
+
+    SaveManager:SetLibrary(Library)
+
+    local Ok, Result, Applied = SaveManager:Load(Name)
+    return Ok, Result, Applied
+end
+
+function Library:SaveConfiguration(Name)
+    Name = Name or Library.ConfigName
+    return SaveManager:Save(Name)
 end
 
 function Library:SetTheme(Value)
