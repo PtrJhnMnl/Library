@@ -5367,7 +5367,7 @@ ElementsTable.Keybind = (function()
 			end
 
 			Picking = true
-			KeybindDisplayLabel.Text = "..."
+			KeybindDisplayLabel.Text = ". . ."
 
 			task.defer(function()
 				local Event
