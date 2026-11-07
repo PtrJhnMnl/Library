@@ -1,17 +1,10 @@
-# Ssamachi UI Library Documentation
+# Ssamachi UI Library
 
-**Version:** 1.0.1
-
-A modern, animated UI library for Roblox executors (supports Fluent icons, MiniMessage rich text, acrylic-style dark theme, mobile support, config saving, etc.).
-
-## Loading the Library
+## Installation
 
 ```lua
-local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))() -- or require the module
--- Alternatively after load: getgenv().Ssamachi or Ssamachi
+local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))()
 ```
-
-The library returns the main `Library` table and also sets `getgenv().Ssamachi = Library` (or global `Ssamachi`).
 
 ---
 
@@ -19,272 +12,308 @@ The library returns the main `Library` table and also sets `getgenv().Ssamachi =
 
 ```lua
 local Window = Ssamachi:CreateWindow({
-    Title = "My Script",              -- Required. Main window title
-    SubTitle = "v1.0",                -- Optional. Shown next to title
-    Icon = "home",                    -- Optional. Icon name (Fluent) or rbxassetid:// / http url
-    Image = "rbxassetid://123456",    -- Optional. Large image shown above tabs (sidebar)
-    Size = UDim2.fromOffset(580, 460),-- Optional. Default is reasonable size
-    TabWidth = 160,                   -- Optional. Width of the left tab sidebar
-    Search = true,                    -- Optional. Enable search bar in sidebar (default true)
-    DropdownsOutsideWindow = false,   -- Optional. Open dropdowns to the right of the window
-    MinimizeKey = Enum.KeyCode.LeftControl, -- Optional. Key to toggle minimize
-    AutoConfig = "MyConfig",          -- Optional. Auto-save/load config name (uses SaveManager)
+    Title = "My Hub",
+    SubTitle = "v1.0",
+    Icon = "home-20-filled",
+    Image = "rbxassetid://1234567890",
+    Size = UDim2.fromOffset(600, 400),
+    TabWidth = 180,
+    MinimizeKey = Enum.KeyCode.LeftControl,
+    AutoConfig = "myconfig",
 })
 ```
 
-**Notes:**
-- Only **one** window can be created.
-- Window is automatically centered.
-- Supports dragging (title bar) and resizing (bottom-right corner).
-- `AutoConfig` enables automatic saving of element values on change and loading on start.
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Title` | `string` | required | Window title shown in the title bar |
+| `SubTitle` | `string` | `nil` | Secondary text next to the title |
+| `Icon` | `string \| number` | `nil` | Title bar icon (see [Icons](#icons)) |
+| `Image` | `string` | `nil` | Large image displayed above the sidebar tabs |
+| `Size` | `UDim2` | `nil` | Initial window size |
+| `TabWidth` | `number` | `nil` | Sidebar width in pixels |
+| `MinimizeKey` | `Enum.KeyCode` | `LeftControl` | Key to hide/show the UI |
+| `AutoConfig` | `string` | `nil` | Enables automatic config saving with this name |
 
-### Window Methods
-
-| Method | Description |
-|--------|-------------|
-| `Window:AddTab({Title = "...", Icon = "..."})` | Creates and returns a new Tab |
-| `Window:SelectTab(index)` | Selects tab by 1-based index |
-| `Window:Minimize()` | Toggles window visibility |
-| `Window:Destroy()` | Destroys the window |
-| `Window:Dialog({Title, Content, Buttons = {{Title, Callback}, ...}})` | Shows a modal dialog |
-| `Window:ToggleSearch()` | Toggles the search bar visibility |
+> Search is always enabled — no configuration required.
 
 ---
 
-## Tabs & Sections
+## Tabs
 
 ```lua
 local Tab = Window:AddTab({
     Title = "Main",
-    Icon = "settings", -- Optional Fluent icon name or asset
+    Icon = "home-20-filled",
 })
-
--- Direct section on tab
-local Section = Tab:AddSection("General", "user") -- Title, optional Icon
-
--- Or with SubTabs
-local SubTab = Tab:AddSubTab("Combat", "sword")
-local SubSection = SubTab:AddSection("Aimbot")
 ```
 
-**Tab Methods:**
-- `Tab:AddSection(Title, Icon?)` → returns Section
-- `Tab:AddSubTab(Title, Icon?)` → returns SubTab (which also supports `:AddSection`)
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Title` | `string` | required | Tab display name |
+| `Icon` | `string \| number` | `nil` | Tab icon |
 
-**SubTab** works exactly like a Tab for adding sections/elements.
+### Selecting a Tab Programmatically
 
-Sections are just visual headers that group elements. Elements are added to the current container (Section / Tab / SubTab).
+```lua
+Window:SelectTab(Tab)  -- by Tab object
+Window:SelectTab(1)    -- by index
+```
+
+### SubTabs
+
+```lua
+local SubTab = Tab:AddSubTab({
+    Title = "Aimbot",
+    Icon = "crosshair-20-filled",
+})
+```
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Title` | `string` | required | SubTab display name |
+| `Icon` | `string \| number` | `nil` | SubTab icon |
+
+> When a SubTab exists, `Tab:AddSection(...)` automatically routes to the currently selected SubTab.
+
+---
+
+## Sections
+
+```lua
+local Section = Tab:AddSection({
+    Title = "Combat",
+    Icon = "sword-20-filled",
+})
+```
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Title` | `string` | required | Section header text |
+| `Icon` | `string \| number` | `nil` | Section icon |
 
 ---
 
 ## Elements
 
-All elements are created via the metatable on Section/Tab/SubTab:
+All elements accept the following common arguments:
 
-```lua
-Section:AddButton(...)
-Section:AddToggle(...)
-Section:AddSlider(...)
--- etc.
-```
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Title` | `string` | required | Element title |
+| `Description` | `string` | `nil` | Secondary description |
+| `Icon` | `string \| number` | `nil` | Element icon (except Dropdown/Slider/Input) |
 
-Most elements accept a common set of options via the `Config` table passed to the constructor, and support:
-
-- `Title` (required for most)
-- `Description` / `Content` (optional subtitle)
-- `Icon` (optional, Fluent icon name or asset URL)
-- `Visible` (optional boolean)
-
-Elements that hold state also support:
-- `:SetValue(...)`
-- `:OnChanged(function)`
-- `:Destroy()`
-- `:SetTitle(text)` / `:SetDesc(text)` / `:Visible(bool)`
-
-### 1. Button
+### Button
 
 ```lua
 Section:AddButton({
     Title = "Click Me",
     Description = "Does something cool",
-    Icon = "mouse-pointer", -- optional
+    Icon = "cursor-click-20-filled",
     Callback = function()
-        print("Clicked!")
-    end
+        print("clicked")
+    end,
 })
 ```
 
-**Returns:** Element frame (with SetTitle, SetDesc, Visible, Destroy)
-
-No state. Callback fires on click.
-
----
-
-### 2. Toggle
+### Toggle
 
 ```lua
-local Toggle = Section:AddToggle("MyToggle", {  -- first arg is unique Index (for config saving)
-    Title = "Enable Feature",
-    Description = "Turns the feature on/off",
+local Toggle = Section:AddToggle(1, {
+    Title = "Enabled",
+    Description = "Turn it on or off",
     Default = false,
     Callback = function(Value)
-        print("Toggled to", Value)
-    end
+        print(Value)
+    end,
 })
 ```
 
-**Methods:**
-- `Toggle:SetValue(boolean)`
-- `Toggle:OnChanged(function(value))`
-- `Toggle:Destroy()`
-- `Toggle.Value` → current boolean
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Default` | `boolean` | `false` | Initial value |
+| `Callback` | `function` | `nil` | Called with the new value |
 
----
-
-### 3. Slider
+**Methods**
 
 ```lua
-local Slider = Section:AddSlider("WalkSpeed", {
-    Title = "Walk Speed",
-    Description = "Character speed",
+Toggle:SetValue(true)                  -- set value programmatically
+Toggle:OnChanged(function(Value) end)  -- register change listener
+Toggle:Destroy()                       -- remove the element
+```
+
+### Slider
+
+```lua
+local Slider = Section:AddSlider(2, {
+    Title = "Speed",
     Default = 16,
     Min = 0,
     Max = 100,
-    Rounding = 0,          -- decimal places
-    Callback = function(Value)
-        -- apply Value
-    end
+    Rounding = 1,
+    Callback = function(Value) end,
 })
 ```
 
-**Methods:**
-- `Slider:SetValue(number)`
-- `Slider:OnChanged(function(value))`
-- `Slider:Destroy()`
-- `Slider.Value`
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Default` | `number` | required | Initial value |
+| `Min` | `number` | required | Minimum value |
+| `Max` | `number` | required | Maximum value |
+| `Rounding` | `number` | required | Decimal places (`0` = integer) |
 
-Supports dragging the knob and typing the value (hover to reveal input).
-
----
-
-### 4. Dropdown
+**Methods**
 
 ```lua
-local Dropdown = Section:AddDropdown("Mode", {
-    Title = "Select Mode",
-    Description = "Choose one",
-    Values = {"Option A", "Option B", "Option C"},
-    Default = "Option A",          -- string or number (index) or table (for Multi)
-    Multi = false,                 -- allow multiple selection
-    AllowNull = false,             -- allow clearing selection when Multi
-    KeepSearch = false,            -- keep search text after close
-    Callback = function(Value)
-        -- Value is string (or table of selected when Multi)
-    end
+Slider:SetValue(50)
+Slider:OnChanged(function(Value) end)
+Slider:Destroy()
+```
+
+### Dropdown
+
+```lua
+local Dropdown = Section:AddDropdown(3, {
+    Title = "Mode",
+    Values = { "One", "Two", "Three" },
+    Default = "One",
+    Multi = false,
+    AllowNull = false,
+    KeepSearch = false,
+    Callback = function(Value) end,
 })
 ```
 
-**Methods:**
-- `Dropdown:SetValue(val)` / `Dropdown:SetActiveValues(table)`
-- `Dropdown:SetValues(newTable)`
-- `Dropdown:OnChanged(function(value))`
-- `Dropdown:Open()` / `Dropdown:Close()`
-- `Dropdown:Destroy()`
-- `Dropdown.Value`
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Values` | `table` | required | List of options |
+| `Default` | `string \| table` | `nil` | Initial selection |
+| `Multi` | `boolean` | `false` | Allow multiple selections |
+| `AllowNull` | `boolean` | `false` | Allow deselecting all (Multi) |
+| `KeepSearch` | `boolean` | `false` | Preserve search text after closing |
 
-Supports search bar inside the dropdown list.
-
----
-
-### 5. Input (TextBox)
+**Methods**
 
 ```lua
-local Input = Section:AddInput("Username", {
-    Title = "Username",
-    Description = "Enter your name",
-    Default = "",
-    Placeholder = "Type here...",
-    Numeric = false,       -- only allow numbers
-    Finished = false,      -- only fire callback on Enter / focus lost
-    MaxLength = nil,       -- optional character limit
-    Callback = function(Text)
-        print(Text)
-    end
+Dropdown:SetValue("Two")
+Dropdown:SetValues({ "A", "B", "C" })
+Dropdown:GetActiveValues()
+Dropdown:OnChanged(function(Value) end)
+Dropdown:Destroy()
+```
+
+### Keybind
+
+```lua
+local Keybind = Section:AddKeybind(4, {
+    Title = "Aim Key",
+    Default = "E",
+    Mode = "Toggle",
+    Callback = function(State) end,
+    ChangedCallback = function(NewKey) end,
 })
 ```
 
-**Methods:**
-- `Input:SetValue(string)`
-- `Input:OnChanged(function(text))`
-- `Input:Destroy()`
-- `Input.Value`
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Default` | `string` | required | Initial key name (`"E"`, `"MouseRight"`, ...) |
+| `Mode` | `string` | `"Toggle"` | `"Toggle"`, `"Hold"`, or `"Always"` |
 
----
-
-### 6. Keybind
+**Methods**
 
 ```lua
-local Keybind = Section:AddKeybind("ToggleUI", {
-    Title = "Toggle UI",
-    Description = "Key to show/hide",
-    Default = "LeftControl",
-    Mode = "Toggle",       -- "Toggle" | "Hold" | "Always"
-    Callback = function(Toggled)
-        -- called when activated
-    end,
-    ChangedCallback = function(NewKey)
-        -- called when key is rebound
-    end
-})
+Keybind:GetState()                        -- returns current boolean state
+Keybind:SetValue("F", "Hold")
+Keybind:OnChanged(function(Key) end)
+Keybind:OnClick(function(State) end)
+Keybind:Destroy()
 ```
 
-**Methods:**
-- `Keybind:SetValue(keyName, mode?)`
-- `Keybind:GetState()` → boolean (current activation state)
-- `Keybind:OnClick(function)` / `Keybind:OnChanged(function)`
-- `Keybind:DoClick()`
-- `Keybind:Destroy()`
-
-Supports keyboard keys and MouseLeft / MouseRight / MouseMiddle.
-
----
-
-### 7. Colorpicker
+### Colorpicker
 
 ```lua
-local Colorpicker = Section:AddColorpicker("ESPColor", {
-    Title = "ESP Color",
-    Description = "Color of the boxes",
+local Picker = Section:AddColorpicker(5, {
+    Title = "Accent Color",
     Default = Color3.fromRGB(255, 0, 0),
-    Transparency = 0,              -- 0 = opaque, 1 = fully transparent
-    Callback = function(Color)
-        -- Color is Color3
-    end
+    Transparency = true,
+    Callback = function(Color) end,
 })
 ```
 
-**Methods:**
-- `Colorpicker:SetValue({H, S, V}, transparency?)`
-- `Colorpicker:SetValueRGB(Color3, transparency?)`
-- `Colorpicker:OnChanged(function(color))`
-- `Colorpicker:Destroy()`
-- `Colorpicker.Value` / `Colorpicker.Transparency`
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Default` | `Color3` | required | Initial color |
+| `Transparency` | `boolean` | `false` | Enable alpha/transparency slider |
 
-Opens a full color dialog with HSV map, hue slider, RGB/Hex inputs, and optional alpha.
+**Methods**
 
----
+```lua
+Picker:SetValueRGB(Color3.fromRGB(0, 255, 0), 0.5)
+Picker:SetValue({ 0.5, 1, 1 }, 0)  -- HSV + transparency
+Picker:OnChanged(function(Color) end)
+Picker:Destroy()
+```
 
-### 8. Paragraph
+### Input
+
+```lua
+local Input = Section:AddInput(6, {
+    Title = "Name",
+    Default = "",
+    Placeholder = "Enter your name...",
+    Numeric = false,
+    Finished = false,
+    MaxLength = 32,
+    Callback = function(Text) end,
+})
+```
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Default` | `string` | `""` | Initial text |
+| `Placeholder` | `string` | `""` | Placeholder text |
+| `Numeric` | `boolean` | `false` | Only allow numbers |
+| `Finished` | `boolean` | `false` | Only fire callback on Enter |
+| `MaxLength` | `number` | `nil` | Maximum character count |
+
+**Methods**
+
+```lua
+Input:SetValue("Hello")
+Input:OnChanged(function(Text) end)
+Input:Destroy()
+```
+
+### Paragraph
 
 ```lua
 Section:AddParagraph({
     Title = "Information",
-    Content = "This is a long description that can use <color:#FF0000>MiniMessage</color> tags.",
-    Icon = "info"
+    Content = "This is a paragraph of <b>rich</b> text.",
 })
 ```
 
-Non-interactive text block. Supports rich text via MiniMessage.
+> Paragraphs support Roblox rich text if `RichText = true` is set on the TextLabel — the library sets this automatically for descriptions and content fields where mark-up is used.
+
+---
+
+## Icons
+
+`Ssamachi:GetIcon(Name)` resolves an asset id string ready for `ImageLabel.Image`:
+
+```lua
+Image = Ssamachi:GetIcon("home-20-filled")   -- named icon via Fluent provider
+Image = Ssamachi:GetIcon(123456789)          -- → "rbxassetid://123456789"
+Image = Ssamachi:GetIcon("rbxassetid://123") -- passes through
+Image = Ssamachi:GetIcon("https://...")      -- passes through
+```
+
+Use directly when constructing custom UI:
+
+```lua
+local ImageLabel = Instance.new("ImageLabel")
+ImageLabel.Image = Ssamachi:GetIcon("star-20-filled")
+```
 
 ---
 
@@ -293,149 +322,95 @@ Non-interactive text block. Supports rich text via MiniMessage.
 ```lua
 Ssamachi:Notify({
     Title = "Success",
-    Content = "Feature enabled",
-    SubContent = "You can now use it",  -- optional smaller text
-    Duration = 5                        -- seconds (nil = stays until closed)
+    Content = "Script loaded successfully",
+    SubContent = "All modules ready",
+    Duration = 5,
 })
 ```
 
-Notifications appear in the bottom-right and can be closed manually.
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Title` | `string` | `"Title"` | Notification title |
+| `Content` | `string` | `"Content"` | Main content text |
+| `SubContent` | `string` | `""` | Secondary text |
+| `Duration` | `number` | `nil` | Auto-dismiss time in seconds (omit to persist) |
 
 ---
 
-## Minimizer Button
+## Dialogs
+
+```lua
+Window:Dialog({
+    Title = "Confirm Action",
+    Content = "Are you sure you want to continue?",
+    Buttons = {
+        { Title = "Yes", Callback = function() end },
+        { Title = "No" },
+    },
+})
+```
+
+---
+
+## Minimizer
 
 ```lua
 Ssamachi:CreateMinimizer({
-    Size = UDim2.fromOffset(40, 40),
-    Position = UDim2.new(0, 20, 0, 20),
-    Icon = "rbxassetid://10734897102", -- or Fluent name
-    Corner = 12,
-    Transparency = 0.1,
+    Icon = "toggle-right-20-regular",
+    Size = UDim2.fromOffset(36, 36),
+    Position = UDim2.new(0, 300, 0, 20),
     Draggable = true,
-    Visible = true
+    Corner = 14,
+    Transparency = 0,
+    Visible = true,
 })
 ```
 
-Creates a floating button that toggles `Window:Minimize()`. Useful on mobile.
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Icon` | `string \| number` | `"toggle-right-20-regular"` | Button icon |
+| `Size` | `UDim2` | `UDim2.fromOffset(36, 36)` | Button size |
+| `Position` | `UDim2` | `UDim2.new(0, 300, 0, 20)` | Button position |
+| `Draggable` | `boolean` | `false` | Allow dragging the button |
+| `Corner` | `number` | `14` | Corner radius |
+| `Transparency` | `number` | `0` | Background transparency |
+| `Visible` | `boolean` | `true` | Initial visibility |
 
 ---
 
-## Themes
+## Config Save / Load
 
-Currently only the **Darker** theme is implemented and forced.
+### Manual
 
 ```lua
-Ssamachi:SetTheme("Darker") -- does nothing else; always Darker
+Ssamachi.SaveManager:SetFolder("MyHub")
+Ssamachi.SaveManager:Save("config1")
+Ssamachi.SaveManager:Load("config1")
 ```
 
-All colors are defined in the internal `Themes` table (Accent, AcrylicMain, Text, SubText, etc.).
+### Auto-Save
 
----
-
-## Icons
-
-Uses Fluent icons by default (loaded from remote).
+Pass `AutoConfig` when creating a window:
 
 ```lua
-Ssamachi:GetIcon("home")           -- returns asset table or nil
-Ssamachi:SetIcon(imageLabel, "home") -- applies to an ImageLabel
-```
-
-You can also pass raw `"rbxassetid://..."` or `"http..."` strings anywhere an Icon is accepted.
-
----
-
-## Config Saving (SaveManager)
-
-When you pass `AutoConfig = "ConfigName"` to `CreateWindow`, the library automatically:
-
-1. Creates folder `Ssamachi/`
-2. Saves/loads `Ssamachi/ConfigName.json`
-3. Saves on every element change (debounced)
-4. Loads values after the window is built
-
-Supported types: Toggle, Slider, Dropdown, Colorpicker, Keybind, Input.
-
-You can also use SaveManager manually (advanced):
-
-```lua
--- After setting Ssamachi.AutoConfig or calling SaveManager:SetLibrary(Ssamachi)
-SaveManager:SetFolder("MyFolder")
-SaveManager:Save("MyConfig")
-SaveManager:Load("MyConfig")
-SaveManager:SetIgnoreIndexes({"SomeToggle", "Another"})
-```
-
----
-
-## MiniMessage / Rich Text
-
-Any `Title`, `Description`, `Content`, or notification text supports MiniMessage-style tags that are automatically converted to Roblox RichText:
-
-```
-<red>Red text</red>
-<#FF5500>Hex color</#FF5500>
-<color:#00FF00>Green</color>
-<bold>Bold</bold> <italic>Italic</italic>
-<underline>Under</underline> <strikethrough>Strike</strikethrough>
-<gradient:#FF0000:#00FF00:#0000FF>Rainbow text</gradient>
-<br> for newlines
-```
-
-Supported color names: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white, orange, pink, lime, brown, etc.
-
----
-
-## Common Patterns
-
-```lua
-local Library = loadstring(...)()
-
 local Window = Ssamachi:CreateWindow({
-    Title = "Example Hub",
-    SubTitle = "by Me",
-    Icon = "box",
-    AutoConfig = "ExampleHub",
+    Title = "My Hub",
+    AutoConfig = "default",
 })
+```
 
-local Main = Window:AddTab({Title = "Main", Icon = "home"})
-local Settings = Window:AddTab({Title = "Settings", Icon = "settings"})
+Every element change triggers an immediate save. The load happens automatically once every element has been registered (safe even if you call `SaveManager:Load` before adding elements — it will queue and retry).
 
-local Sec = Main:AddSection("Player")
+### Ignoring Indexes
 
-Sec:AddToggle("SpeedToggle", {
-    Title = "Speed Hack",
-    Default = false,
-    Callback = function(v)
-        -- ...
-    end
-})
-
-Sec:AddSlider("SpeedValue", {
-    Title = "Speed Amount",
-    Default = 50,
-    Min = 16,
-    Max = 200,
-    Rounding = 0,
-    Callback = function(v) end
-})
-
--- Minimize key is LeftControl by default
-Ssamachi:CreateMinimizer({Draggable = true})
+```lua
+Ssamachi.SaveManager:SetIgnoreIndexes({ 1, 2, 3 })
 ```
 
 ---
 
-## Notes & Limitations
+## Notes
 
-- Designed for exploit environments (`cloneref`, `protectgui`, `gethui`, file system functions, etc.). Studio has stubs.
-- Mobile detection automatically adjusts some UI (notifications, minimizer).
-- Only one window supported.
-- Theme system is currently single-theme (Darker).
-- Search filters elements by title, description, and visible text content.
-- All animations use a custom Flipper spring/motor system.
-
----
-
-*Generated for the cleaned Beta.lua / Ssamachi UI Library.*
+- **Search** is built into every window and cannot be disabled.
+- **Rich text** — all labels, titles, and descriptions support Roblox rich text tags (`<b>`, `<i>`, `<font color="#...">`, etc.) — set `RichText = true` on any element config to enable mark-up in your text.
+- **One window per script** — the library supports a single window at a time.
