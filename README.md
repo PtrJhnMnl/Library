@@ -1,4 +1,3 @@
-```markdown
 # Ssamachi UI Library
 
 A clean, modern Roblox UI library with smooth animations, built-in search, built-in minimizer, config saving, and rich element support.
