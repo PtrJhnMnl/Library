@@ -52,7 +52,7 @@ local Window = Ssamachi:CreateWindow({
 | `Title` | `string` | required | Window title shown in the title bar |
 | `SubTitle` | `string` | `nil` | Secondary text next to the title |
 | `Icon` | `string \| number` | `nil` | Title bar icon (see [Icons](#icons)) |
-| `Image` | `string` | `nil` | Large image displayed above the sidebar tabs |
+| `Image` | `string \| number` | `nil` | Large image displayed above the sidebar tabs |
 | `Size` | `UDim2` | `nil` | Initial window size |
 | `TabWidth` | `number` | `nil` | Sidebar width in pixels |
 | `MinimizeKey` | `Enum.KeyCode` | `LeftControl` | Key to hide/show the UI |
