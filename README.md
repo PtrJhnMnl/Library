@@ -14,13 +14,9 @@ local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJ
 local Window = Ssamachi:CreateWindow({
     Title = "My Hub",
     SubTitle = "v1.0",
-    Icon = "home-20-filled",
-    Image = "rbxassetid://1234567890",
     Size = UDim2.fromOffset(600, 400),
     TabWidth = 180,
-    MinimizeKey = Enum.KeyCode.LeftControl,
     ConfigName = "myconfig",
-    Minimizer = true,
 })
 ```
 
@@ -34,7 +30,7 @@ local Window = Ssamachi:CreateWindow({
 | `TabWidth` | `number` | `nil` | Sidebar width in pixels |
 | `MinimizeKey` | `Enum.KeyCode` | `LeftControl` | Key to hide/show the UI |
 | `ConfigName` | `string` | `nil` | Enables automatic config saving with this name |
-| `Minimizer` | `boolean` | `true` (Mobile) / `true` (PC) | Toggles the built-in floating minimizer button. On Mobile, this is always `true`. |
+| `Minimizer` | `boolean` | `false` (PC) / `true` (Mobile) | Toggles the built-in floating minimizer button. On Mobile, this is always `true`. |
 
 ## Built-in Minimizer
 
@@ -50,7 +46,6 @@ The minimizer is automatically created when the window is opened. It is a floati
 ```lua
 local Tab = Window:AddTab({
     Title = "Main",
-    Icon = "home-20-filled",
 })
 ```
 
@@ -71,7 +66,6 @@ Window:SelectTab("Main")
 ```lua
 local SubTab = Tab:AddSubTab({
     Title = "Aimbot",
-    Icon = "crosshair-20-filled",
 })
 ```
 
@@ -87,7 +81,6 @@ When a SubTab exists, `Tab:AddSection(...)` automatically routes to the currentl
 ```lua
 local Section = Tab:AddSection({
     Title = "Combat",
-    Icon = "sword-20-filled",
 })
 ```
 
@@ -115,8 +108,6 @@ The first argument to every `Add*` method is a **unique string index** used by t
 ```lua
 Section:AddButton("ClickMe", {
     Title = "Click Me",
-    Description = "Does something cool",
-    Icon = "cursor-click-20-filled",
     Callback = function(Value)
         print("clicked")
     end,
@@ -128,7 +119,6 @@ Section:AddButton("ClickMe", {
 ```lua
 local Toggle = Section:AddToggle("ToggleKey", {
     Title = "Enabled",
-    Description = "Turn it on or off",
     Default = false,
     Callback = function(Value)
         print(Value)
@@ -172,9 +162,6 @@ local Dropdown = Section:AddDropdown("DropdownKey", {
     Title = "Mode",
     Values = { "One", "Two", "Three" },
     Default = "One",
-    Multi = false,
-    AllowNull = false,
-    KeepSearch = false,
     Callback = function(Value) end,
 })
 ```
@@ -195,9 +182,7 @@ Dropdown:Destroy()
 local Keybind = Section:AddKeybind("KeybindKey", {
     Title = "Aim Key",
     Default = "E",
-    Mode = "Toggle",
     Callback = function(Value) end,
-    ChangedCallback = function(Value) end,
 })
 ```
 
@@ -223,7 +208,6 @@ Keybind:Destroy()
 local Picker = Section:AddColorpicker("ColorKey", {
     Title = "Accent Color",
     Default = Color3.fromRGB(255, 0, 0),
-    Transparency = true,
     Callback = function(Value) end,
 })
 ```
@@ -242,11 +226,6 @@ Picker:Destroy()
 ```lua
 local Input = Section:AddInput("InputKey", {
     Title = "Name",
-    Default = "",
-    Placeholder = "Enter your name...",
-    Numeric = false,
-    Finished = false,
-    MaxLength = 32,
     Callback = function(Value) end,
 })
 ```
@@ -285,7 +264,6 @@ Section:AddParagraph("ParagraphKey", {
 Ssamachi:Notify({
     Title = "Success",
     Content = "Script loaded successfully",
-    SubContent = "All modules ready",
     Duration = 5,
 })
 ```
