@@ -1,10 +1,34 @@
 # Ssamachi UI Library
 
-## Installation
+A clean, modern Roblox UI library with smooth animations, built-in search, config saving, and rich element support.
 
 ```lua
 local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))()
 ```
+
+---
+
+## Table of Contents
+
+- [Creating a Window](#creating-a-window)
+- [Tabs](#tabs)
+- [SubTabs](#subtabs)
+- [Sections](#sections)
+- [Elements](#elements)
+  - [Button](#button)
+  - [Toggle](#toggle)
+  - [Slider](#slider)
+  - [Dropdown](#dropdown)
+  - [Keybind](#keybind)
+  - [Colorpicker](#colorpicker)
+  - [Input](#input)
+  - [Paragraph](#paragraph)
+- [Icons](#icons)
+- [Notifications](#notifications)
+- [Dialogs](#dialogs)
+- [Minimizer](#minimizer)
+- [Config Save / Load](#config-save--load)
+- [Notes](#notes)
 
 ---
 
@@ -34,7 +58,8 @@ local Window = Ssamachi:CreateWindow({
 | `MinimizeKey` | `Enum.KeyCode` | `LeftControl` | Key to hide/show the UI |
 | `AutoConfig` | `string` | `nil` | Enables automatic config saving with this name |
 
-> Search is always enabled — no configuration required.
+> **Search is always enabled** — no configuration required.  
+> Only **one window** can be created per script.
 
 ---
 
@@ -59,7 +84,9 @@ Window:SelectTab(Tab)  -- by Tab object
 Window:SelectTab(1)    -- by index
 ```
 
-### SubTabs
+---
+
+## SubTabs
 
 ```lua
 local SubTab = Tab:AddSubTab({
@@ -73,7 +100,7 @@ local SubTab = Tab:AddSubTab({
 | `Title` | `string` | required | SubTab display name |
 | `Icon` | `string \| number` | `nil` | SubTab icon |
 
-> When a SubTab exists, `Tab:AddSection(...)` automatically routes to the currently selected SubTab.
+When a SubTab exists, `Tab:AddSection(...)` automatically routes to the currently selected SubTab.
 
 ---
 
@@ -91,22 +118,28 @@ local Section = Tab:AddSection({
 | `Title` | `string` | required | Section header text |
 | `Icon` | `string \| number` | `nil` | Section icon |
 
+Sections can also be added to a SubTab via `SubTab:AddSection(...)`.
+
 ---
 
 ## Elements
 
-All elements accept the following common arguments:
+Every element accepts these **common** arguments unless noted otherwise:
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Title` | `string` | required | Element title |
 | `Description` | `string` | `nil` | Secondary description |
-| `Icon` | `string \| number` | `nil` | Element icon (except Dropdown/Slider/Input) |
+| `Icon` | `string \| number` | `nil` | Element icon |
+
+The first argument to every `Add*` method is a **unique numeric index** used by the config system. Pick any unique number per element.
+
+---
 
 ### Button
 
 ```lua
-Section:AddButton({
+Section:AddButton(1, {
     Title = "Click Me",
     Description = "Does something cool",
     Icon = "cursor-click-20-filled",
@@ -116,10 +149,16 @@ Section:AddButton({
 })
 ```
 
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Callback` | `function` | `nil` | Called when the button is clicked |
+
+---
+
 ### Toggle
 
 ```lua
-local Toggle = Section:AddToggle(1, {
+local Toggle = Section:AddToggle(2, {
     Title = "Enabled",
     Description = "Turn it on or off",
     Default = false,
@@ -132,20 +171,22 @@ local Toggle = Section:AddToggle(1, {
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Default` | `boolean` | `false` | Initial value |
-| `Callback` | `function` | `nil` | Called with the new value |
+| `Callback` | `function` | `nil` | Called with the new boolean value |
 
 **Methods**
 
 ```lua
-Toggle:SetValue(true)                  -- set value programmatically
-Toggle:OnChanged(function(Value) end)  -- register change listener
-Toggle:Destroy()                       -- remove the element
+Toggle:SetValue(true)
+Toggle:OnChanged(function(Value) end)
+Toggle:Destroy()
 ```
+
+---
 
 ### Slider
 
 ```lua
-local Slider = Section:AddSlider(2, {
+local Slider = Section:AddSlider(3, {
     Title = "Speed",
     Default = 16,
     Min = 0,
@@ -170,10 +211,12 @@ Slider:OnChanged(function(Value) end)
 Slider:Destroy()
 ```
 
+---
+
 ### Dropdown
 
 ```lua
-local Dropdown = Section:AddDropdown(3, {
+local Dropdown = Section:AddDropdown(4, {
     Title = "Mode",
     Values = { "One", "Two", "Three" },
     Default = "One",
@@ -186,10 +229,10 @@ local Dropdown = Section:AddDropdown(3, {
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
-| `Values` | `table` | required | List of options |
-| `Default` | `string \| table` | `nil` | Initial selection |
+| `Values` | `table` | required | List of selectable options |
+| `Default` | `string \| table` | `nil` | Initial selection (`table` for Multi) |
 | `Multi` | `boolean` | `false` | Allow multiple selections |
-| `AllowNull` | `boolean` | `false` | Allow deselecting all (Multi) |
+| `AllowNull` | `boolean` | `false` | Allow deselecting all (Multi only) |
 | `KeepSearch` | `boolean` | `false` | Preserve search text after closing |
 
 **Methods**
@@ -202,10 +245,12 @@ Dropdown:OnChanged(function(Value) end)
 Dropdown:Destroy()
 ```
 
+---
+
 ### Keybind
 
 ```lua
-local Keybind = Section:AddKeybind(4, {
+local Keybind = Section:AddKeybind(5, {
     Title = "Aim Key",
     Default = "E",
     Mode = "Toggle",
@@ -218,21 +263,32 @@ local Keybind = Section:AddKeybind(4, {
 |----------|------|---------|-------------|
 | `Default` | `string` | required | Initial key name (`"E"`, `"MouseRight"`, ...) |
 | `Mode` | `string` | `"Toggle"` | `"Toggle"`, `"Hold"`, or `"Always"` |
+| `ChangedCallback` | `function` | `nil` | Called when the key binding changes |
+
+**Modes**
+
+| Mode | Description |
+|------|-------------|
+| `Toggle` | Toggles state on key press |
+| `Hold` | State is `true` while key is held |
+| `Always` | Always returns `true` |
 
 **Methods**
 
 ```lua
-Keybind:GetState()                        -- returns current boolean state
+Keybind:GetState()
 Keybind:SetValue("F", "Hold")
 Keybind:OnChanged(function(Key) end)
 Keybind:OnClick(function(State) end)
 Keybind:Destroy()
 ```
 
+---
+
 ### Colorpicker
 
 ```lua
-local Picker = Section:AddColorpicker(5, {
+local Picker = Section:AddColorpicker(6, {
     Title = "Accent Color",
     Default = Color3.fromRGB(255, 0, 0),
     Transparency = true,
@@ -254,10 +310,12 @@ Picker:OnChanged(function(Color) end)
 Picker:Destroy()
 ```
 
+---
+
 ### Input
 
 ```lua
-local Input = Section:AddInput(6, {
+local Input = Section:AddInput(7, {
     Title = "Name",
     Default = "",
     Placeholder = "Enter your name...",
@@ -272,7 +330,7 @@ local Input = Section:AddInput(6, {
 |----------|------|---------|-------------|
 | `Default` | `string` | `""` | Initial text |
 | `Placeholder` | `string` | `""` | Placeholder text |
-| `Numeric` | `boolean` | `false` | Only allow numbers |
+| `Numeric` | `boolean` | `false` | Only allow numeric input |
 | `Finished` | `boolean` | `false` | Only fire callback on Enter |
 | `MaxLength` | `number` | `nil` | Maximum character count |
 
@@ -284,36 +342,48 @@ Input:OnChanged(function(Text) end)
 Input:Destroy()
 ```
 
+---
+
 ### Paragraph
 
 ```lua
-Section:AddParagraph({
+Section:AddParagraph(8, {
     Title = "Information",
     Content = "This is a paragraph of <b>rich</b> text.",
 })
 ```
 
-> Paragraphs support Roblox rich text if `RichText = true` is set on the TextLabel — the library sets this automatically for descriptions and content fields where mark-up is used.
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Content` | `string` | `""` | Paragraph body (supports Roblox rich text) |
 
 ---
 
 ## Icons
 
-`Ssamachi:GetIcon(Name)` resolves an asset id string ready for `ImageLabel.Image`:
+`Ssamachi:GetIcon(Name)` resolves a named icon to a **spritesheet URL string** (useful for `Window.Image` or `Minimizer.Icon`):
 
 ```lua
-Image = Ssamachi:GetIcon("home-20-filled")   -- named icon via Fluent provider
-Image = Ssamachi:GetIcon(123456789)          -- → "rbxassetid://123456789"
-Image = Ssamachi:GetIcon("rbxassetid://123") -- passes through
-Image = Ssamachi:GetIcon("https://...")      -- passes through
+Window.Image    = Ssamachi:GetIcon("home-20-filled")
+Minimizer.Icon  = Ssamachi:GetIcon(123456789)   -- → "rbxassetid://123456789"
 ```
 
-Use directly when constructing custom UI:
+`Ssamachi:ApplyIcon(Instance, Name)` applies the full icon (image + rect slicing) to an existing `ImageLabel`:
 
 ```lua
-local ImageLabel = Instance.new("ImageLabel")
-ImageLabel.Image = Ssamachi:GetIcon("star-20-filled")
+local Label = Instance.new("ImageLabel")
+Ssamachi:ApplyIcon(Label, "star-20-filled")
 ```
+
+| Input Type | Resolution |
+|------------|------------|
+| `number` | `rbxassetid://<number>` |
+| `"rbxassetid://..."` / `"https://..."` | passed through as-is |
+| any other `string` | resolved via the Fluent icon provider |
+| `nil` / empty | returns `nil` |
+
+> Use `GetIcon` when you only need a URL (e.g. one non-sliced image).  
+> Use `ApplyIcon` when you need the icon drawn correctly with sprite-sheet slicing.
 
 ---
 
@@ -350,6 +420,12 @@ Window:Dialog({
 })
 ```
 
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Title` | `string` | required | Dialog header text |
+| `Content` | `string` | required | Dialog body text |
+| `Buttons` | `table` | required | Array of `{ Title, Callback }` button configs |
+
 ---
 
 ## Minimizer
@@ -372,9 +448,11 @@ Ssamachi:CreateMinimizer({
 | `Size` | `UDim2` | `UDim2.fromOffset(36, 36)` | Button size |
 | `Position` | `UDim2` | `UDim2.new(0, 300, 0, 20)` | Button position |
 | `Draggable` | `boolean` | `false` | Allow dragging the button |
-| `Corner` | `number` | `14` | Corner radius |
-| `Transparency` | `number` | `0` | Background transparency |
+| `Corner` | `number` | `14` (desktop) / `12` (mobile) | Corner radius |
+| `Transparency` | `number` | `0` | Background transparency (0–1) |
 | `Visible` | `boolean` | `true` | Initial visibility |
+
+Clicking the minimizer toggles the window's visibility.
 
 ---
 
@@ -399,18 +477,32 @@ local Window = Ssamachi:CreateWindow({
 })
 ```
 
-Every element change triggers an immediate save. The load happens automatically once every element has been registered (safe even if you call `SaveManager:Load` before adding elements — it will queue and retry).
+- Every element change **instantly** triggers an autosave (no debounce delay applied to the write).
+- Load is **deferred** until every element has been registered — even if `SaveManager:Load` is called early, it will queue and retry automatically until `Library.ElementsReady` becomes `true`.
 
 ### Ignoring Indexes
+
+Exclude specific element indexes from save/load:
 
 ```lua
 Ssamachi.SaveManager:SetIgnoreIndexes({ 1, 2, 3 })
 ```
+
+### API
+
+| Method | Description |
+|--------|-------------|
+| `SaveManager:SetFolder(folder)` | Sets the save folder (creates it if missing) |
+| `SaveManager:Save(name)` | Saves current options to `<folder>/<name>.json` |
+| `SaveManager:Load(name)` | Loads `<folder>/<name>.json` — retries until elements are ready |
+| `SaveManager:SetIgnoreIndexes(list)` | Skips listed element indexes on save/load |
+| `SaveManager:SetLibrary(library)` | Binds the library instance (done automatically via `CreateWindow`) |
 
 ---
 
 ## Notes
 
 - **Search** is built into every window and cannot be disabled.
-- **Rich text** — all labels, titles, and descriptions support Roblox rich text tags (`<b>`, `<i>`, `<font color="#...">`, etc.) — set `RichText = true` on any element config to enable mark-up in your text.
+- **Rich text** is supported on all labels, titles, descriptions, and content fields — set `RichText = true` on any element config if you want tags like `<b>`, `<i>`, `<font color="#...">` to render. The library also passes `RichText = true` for Toggle / Button titles automatically.
 - **One window per script** — the library supports a single window at a time.
+- **Theme** is fixed to `"Darker"` — `Library:SetTheme()` is exposed for compatibility but currently only supports that one theme.
