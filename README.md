@@ -309,4 +309,3 @@ local Window = Ssamachi:CreateWindow({
 ```lua
 Ssamachi.SaveManager:SetIgnoreIndexes({ "ToggleKey", "SliderKey" })
 ```
-```
