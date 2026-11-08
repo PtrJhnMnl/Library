@@ -16,36 +16,43 @@ local Camera = Workspace.CurrentCamera
 local Mouse = CloneRef(LocalPlayer:GetMouse())
 
 local Icons = loadstring(game:HttpGet("https://molto.pages.dev/source.lua"))()
-Icons.SetProvider("fluent")
+Icons.SetProvider("material")
 
-local Mobile = not RunService:IsStudio()
-    and table.find({ Enum.Platform.IOS, Enum.Platform.Android }, UserInputService:GetPlatform()) ~= nil
+local Mobile = table.find({ Enum.Platform.IOS, Enum.Platform.Android }, UserInputService:GetPlatform()) ~= nil
 
 local RenderStepped = RunService.RenderStepped
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 
 local Themes = {
     Name = "Darker",
-    Accent = Color3.fromRGB(56, 109, 223),
+    Accent = Color3.fromRGB(72, 138, 182),
+
     AcrylicMain = Color3.fromRGB(30, 30, 30),
     AcrylicBorder = Color3.fromRGB(60, 60, 60),
+
     TitleBarLine = Color3.fromRGB(65, 65, 65),
     Tab = Color3.fromRGB(100, 100, 100),
+
     Element = Color3.fromRGB(70, 70, 70),
     ElementBorder = Color3.fromRGB(25, 25, 25),
     InElementBorder = Color3.fromRGB(55, 55, 55),
     ElementTransparency = 0.82,
+
     ToggleSlider = Color3.fromRGB(120, 120, 120),
-    ToggleToggled = Color3.fromRGB(42, 42, 42),
+    ToggleToggled = Color3.fromRGB(255, 255, 255),
     SliderRail = Color3.fromRGB(120, 120, 120),
+
     DropdownFrame = Color3.fromRGB(120, 120, 120),
     DropdownHolder = Color3.fromRGB(35, 35, 35),
     DropdownBorder = Color3.fromRGB(25, 25, 25),
     DropdownOption = Color3.fromRGB(120, 120, 120),
+
     Keybind = Color3.fromRGB(120, 120, 120),
+
     Input = Color3.fromRGB(160, 160, 160),
     InputIndicator = Color3.fromRGB(150, 150, 150),
-    InputIndicatorFocus = Color3.fromRGB(56, 109, 223),
+    InputIndicatorFocus = Color3.fromRGB(72, 138, 182),
+
     Dialog = Color3.fromRGB(35, 35, 35),
     DialogHolder = Color3.fromRGB(25, 25, 25),
     DialogHolderLine = Color3.fromRGB(20, 20, 20),
@@ -54,10 +61,11 @@ local Themes = {
     DialogBorder = Color3.fromRGB(50, 50, 50),
     DialogInput = Color3.fromRGB(45, 45, 45),
     DialogInputLine = Color3.fromRGB(120, 120, 120),
+
     Text = Color3.fromRGB(240, 240, 240),
     SubText = Color3.fromRGB(170, 170, 170),
     Hover = Color3.fromRGB(120, 120, 120),
-    HoverChange = 0.07,
+    HoverChange = 0.07
 }
 
 local Library = {
@@ -72,7 +80,7 @@ local Library = {
     MinimizeKeybind = nil,
     MinimizeKey = Enum.KeyCode.LeftControl,
     ConfigLoaded = false,
-    Minimizer = nil,
+    Minimizer = nil
 }
 
 local function IsMotor(Value)
@@ -742,34 +750,6 @@ function Library:Round(Number, Factor)
     Number = tostring(Number)
 
     return Number:find("%.") and tonumber(Number:sub(1, Number:find("%.") + Factor)) or Number
-end
-
-function Library:GetIcon(Name)
-    if not Name then
-        return nil
-    end
-
-    if type(Name) == "number" then
-        return "rbxassetid://" .. Name
-    end
-
-    if type(Name) ~= "string" or Name == "" then
-        return nil
-    end
-
-    if Name:find("^rbxasset") or Name:find("^http") then
-        return Name
-    end
-
-    local Success, Asset = pcall(function()
-        return Icons.GetAsset(tostring(Name))
-    end)
-
-    if Success and Asset and Asset.Url then
-        return Asset.Url
-    end
-
-    return nil
 end
 
 function Library:ApplyIcon(Instance, Name)
@@ -2222,7 +2202,7 @@ Components.Notification = (function()
             ThemeTag = { ImageColor3 = "Text" },
         })
 
-        Library:ApplyIcon(CloseIcon, "dismiss-20-filled")
+        Library:ApplyIcon(CloseIcon, "close")
 
         NewNotification.Root = New("Frame", {
             BackgroundTransparency = 0,
@@ -2926,7 +2906,7 @@ Components.Window = (function()
             ThemeTag = { ImageColor3 = "SubText" },
         })
 
-        Library:ApplyIcon(SearchIconLabel, "search-20-filled")
+        Library:ApplyIcon(SearchIconLabel, "search")
 
         Creator.AddSignal(SearchInput:GetPropertyChangedSignal("Text"), function()
             UpdateElementVisibility(SearchInput.Text or "")
@@ -3474,7 +3454,7 @@ ElementsTable.Button = (function()
             ThemeTag = { ImageColor3 = "Text" },
         })
 
-        Library:ApplyIcon(ButtonIconLabel, "cursor-click-20-filled")
+        Library:ApplyIcon(ButtonIconLabel, "mouse")
 
         Creator.AddSignal(ButtonFrame.Frame.MouseButton1Click, function()
             Library:SafeCallback(Config.Callback)
@@ -3517,7 +3497,7 @@ ElementsTable.Toggle = (function()
             ThemeTag = { ImageColor3 = "ToggleSlider" },
         })
 
-        Library:ApplyIcon(ToggleCircle, "circle-20-filled")
+        Library:ApplyIcon(ToggleCircle, "circle")
 
         local ToggleBorder = New("UIStroke", {
             Transparency = 0.5,
@@ -3559,7 +3539,7 @@ ElementsTable.Toggle = (function()
             TweenService:Create(
                 ToggleSlider,
                 TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                { BackgroundTransparency = Toggle.Value and 0.45 or 1 }
+                { BackgroundTransparency = Toggle.Value and 0 or 1 }
             ):Play()
 
             ToggleCircle.ImageTransparency = Toggle.Value and 0 or 0.5
@@ -3648,7 +3628,7 @@ ElementsTable.Dropdown = (function()
             ThemeTag = { ImageColor3 = "SubText" },
         })
 
-        Library:ApplyIcon(DropdownIco, "chevron-down-20-filled")
+        Library:ApplyIcon(DropdownIco, "keyboard-arrow-up-rounded")
 
         local DropdownInner = New("TextButton", {
             Size = UDim2.fromOffset(160, 30),
@@ -3730,7 +3710,7 @@ ElementsTable.Dropdown = (function()
             ThemeTag = { ImageColor3 = "SubText" },
         })
 
-        Library:ApplyIcon(DropdownSearchIconLabel, "search-20-filled")
+        Library:ApplyIcon(DropdownSearchIconLabel, "search")
 
         DropdownScrollFrame.Position = UDim2.fromOffset(5, 38)
         DropdownScrollFrame.Size = UDim2.new(1, -5, 1, -43)
@@ -4396,7 +4376,7 @@ ElementsTable.Slider = (function()
             ThemeTag = { ImageColor3 = "Accent" },
         })
 
-        Library:ApplyIcon(SliderDot, "circle-20-filled")
+        Library:ApplyIcon(SliderDot, "circle")
 
         local SliderRail = New("Frame", {
             BackgroundTransparency = 1,
@@ -4990,7 +4970,7 @@ ElementsTable.Colorpicker = (function()
                 BackgroundTransparency = 1,
             })
 
-            Library:ApplyIcon(SatCursor, "circle-20-regular")
+            Library:ApplyIcon(SatCursor, "circle-outline")
 
             local SatVibMap = New("ImageLabel", {
                 Size = UDim2.fromOffset(180, 160),
@@ -5068,7 +5048,7 @@ ElementsTable.Colorpicker = (function()
                 ThemeTag = { ImageColor3 = "DialogInput" },
             })
 
-            Library:ApplyIcon(HueDrag, "circle-20-filled")
+            Library:ApplyIcon(HueDrag, "circle")
 
             local HueSlider = New("Frame", {
                 Size = UDim2.fromOffset(12, 190),
@@ -5127,7 +5107,7 @@ ElementsTable.Colorpicker = (function()
                     ThemeTag = { ImageColor3 = "DialogInput" },
                 })
 
-                Library:ApplyIcon(TransparencyDrag, "circle-20-filled")
+                Library:ApplyIcon(TransparencyDrag, "circle")
 
                 TransparencyColor = New("Frame", {
                     Size = UDim2.fromScale(1, 1),
@@ -5781,6 +5761,7 @@ function Library:CreateWindow(Config)
                 New("UIAspectRatioConstraint", { AspectRatio = 1, AspectType = Enum.AspectType.FitWithinMaxSize }),
                 New("UICorner", { CornerRadius = UDim.new(0, 0) }),
             })
+
             Library:ApplyIcon(IconLabel, Config.Image)
         end
 
@@ -5794,6 +5775,7 @@ function Library:CreateWindow(Config)
             local Size = Holder.AbsoluteSize
             local MaxX = math.max(0, Viewport.X - Size.X)
             local MaxY = math.max(0, Viewport.Y - Size.Y)
+
             return math.clamp(X, 0, MaxX), math.clamp(Y, 0, MaxY)
         end
 
