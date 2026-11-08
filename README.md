@@ -13,9 +13,6 @@ local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJ
 ```lua
 local Window = Ssamachi:CreateWindow({
     Title = "My Hub",
-    SubTitle = "v1.0",
-    Size = UDim2.fromOffset(600, 400),
-    TabWidth = 180,
     ConfigName = "myconfig",
 })
 ```
@@ -119,7 +116,6 @@ Section:AddButton("ClickMe", {
 ```lua
 local Toggle = Section:AddToggle("ToggleKey", {
     Title = "Enabled",
-    Default = false,
     Callback = function(Value)
         print(Value)
     end,
@@ -139,7 +135,6 @@ Toggle:Destroy()
 ```lua
 local Slider = Section:AddSlider("SliderKey", {
     Title = "Speed",
-    Default = 16,
     Min = 0,
     Max = 100,
     Rounding = 1,
@@ -161,7 +156,6 @@ Slider:Destroy()
 local Dropdown = Section:AddDropdown("DropdownKey", {
     Title = "Mode",
     Values = { "One", "Two", "Three" },
-    Default = "One",
     Callback = function(Value) end,
 })
 ```
@@ -249,14 +243,19 @@ Section:AddParagraph("ParagraphKey", {
 
 ## Icons
 
-`Ssamachi:GetIcon(Name)` resolves a named icon to a **spritesheet URL string**.
-`Ssamachi:ApplyIcon(Instance, Name)` applies the full icon (image + rect slicing) to an existing `ImageLabel`.
+The library now uses the **Lucide** icon set as its default provider.
+
+- Named icons (e.g. `"mouse-pointer-click"`, `"chevron-down"`, `"search"`, `"circle-letter-o"`) are resolved via `Ssamachi:GetIcon(Name)` and can be applied with `Ssamachi:ApplyIcon(Instance, Name)`.
+- Numeric icon IDs are converted to `rbxassetid://<number>`.
+- Strings starting with `rbxasset` or `http` are passed through as-is.
+
+Browse all available Lucide icons at: [https://molto.pages.dev/icons/#lucide](https://molto.pages.dev/icons/#lucide)
 
 | Input Type | Resolution |
 |------------|------------|
 | `number` | `rbxassetid://<number>` |
 | `"rbxassetid://..."` / `"https://..."` | passed through as-is |
-| any other `string` | resolved via the Fluent icon provider |
+| any other `string` | resolved via the Lucide icon provider |
 
 ## Notifications
 
@@ -306,5 +305,4 @@ local Window = Ssamachi:CreateWindow({
 
 ```lua
 Ssamachi.SaveManager:SetIgnoreIndexes({ "ToggleKey", "SliderKey" })
-```
 ```
