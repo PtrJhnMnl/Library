@@ -201,7 +201,6 @@ Keybind:Destroy()
 ```lua
 local Picker = Section:AddColorpicker("ColorKey", {
     Title = "Accent Color",
-    Default = Color3.fromRGB(255, 0, 0),
     Callback = function(Value) end,
 })
 ```
@@ -243,19 +242,23 @@ Section:AddParagraph("ParagraphKey", {
 
 ## Icons
 
-The library now uses the **Lucide** icon set as its default provider.
+The library uses the **Phosphor** icon set as its default provider.
 
-- Named icons (e.g. `"mouse-pointer-click"`, `"chevron-down"`, `"search"`, `"circle-letter-o"`) are resolved via `Ssamachi:GetIcon(Name)` and can be applied with `Ssamachi:ApplyIcon(Instance, Name)`.
+Icons are applied automatically whenever you pass an `Icon` argument to a Tab, SubTab, Section, or Element — you don't need to call any function yourself.
+
+- Named icons (e.g. `"house"`, `"caret-down"`, `"magnifying-glass"`, `"circle"`) are resolved via Phosphor.
 - Numeric icon IDs are converted to `rbxassetid://<number>`.
 - Strings starting with `rbxasset` or `http` are passed through as-is.
 
-Browse all available Lucide icons at: [https://molto.pages.dev/icons/#lucide](https://molto.pages.dev/icons/#lucide)
+> **Note:** Phosphor does not ship a font. Icons are rendered as `24px` sprites and will look soft if scaled above that size.
+
+Browse all available Phosphor icons at: [https://molto.pages.dev/icons/#phosphor](https://molto.pages.dev/icons/#phosphor)
 
 | Input Type | Resolution |
 |------------|------------|
 | `number` | `rbxassetid://<number>` |
 | `"rbxassetid://..."` / `"https://..."` | passed through as-is |
-| any other `string` | resolved via the Lucide icon provider |
+| any other `string` | resolved via the Phosphor icon provider |
 
 ## Notifications
 
