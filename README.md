@@ -1,10 +1,3 @@
-Here is the updated documentation reflecting the switch to the **Material Symbols** icon provider.
-
-The key changes are:
-1.  **Icon Provider:** Changed from Phosphor/Lucide to **Material Symbols**.
-2.  **Icon Resolution:** Explained how the `Icon` argument now resolves (via the Material Symbols provider).
-3.  **Removed `GetIcon` / `ApplyIcon`:** The documentation now correctly reflects that users only need to pass the icon name directly into the element/section configuration, and the library handles the rest internally.
-
 # Ssamachi UI Library
 
 A clean, modern Roblox UI library with smooth animations, built-in search, built-in minimizer, config saving, and rich element support.
