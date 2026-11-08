@@ -1,3 +1,10 @@
+Here is the updated documentation reflecting the switch to the **Material Symbols** icon provider.
+
+The key changes are:
+1.  **Icon Provider:** Changed from Phosphor/Lucide to **Material Symbols**.
+2.  **Icon Resolution:** Explained how the `Icon` argument now resolves (via the Material Symbols provider).
+3.  **Removed `GetIcon` / `ApplyIcon`:** The documentation now correctly reflects that users only need to pass the icon name directly into the element/section configuration, and the library handles the rest internally.
+
 # Ssamachi UI Library
 
 A clean, modern Roblox UI library with smooth animations, built-in search, built-in minimizer, config saving, and rich element support.
@@ -242,23 +249,23 @@ Section:AddParagraph("ParagraphKey", {
 
 ## Icons
 
-The library uses the **Phosphor** icon set as its default provider.
+The library uses the **Material Symbols** icon set as its default provider.
 
 Icons are applied automatically whenever you pass an `Icon` argument to a Tab, SubTab, Section, or Element — you don't need to call any function yourself.
 
-- Named icons (e.g. `"house"`, `"caret-down"`, `"magnifying-glass"`, `"circle"`) are resolved via Phosphor.
+- Named icons (e.g. `"home"`, `"settings"`, `"search"`, `"circle"`) are resolved via Material Symbols.
 - Numeric icon IDs are converted to `rbxassetid://<number>`.
 - Strings starting with `rbxasset` or `http` are passed through as-is.
 
-> **Note:** Phosphor does not ship a font. Icons are rendered as `24px` sprites and will look soft if scaled above that size.
+> **Note:** Material Symbols does not ship a font. Icons are rendered as `24px` sprites and will look soft if scaled above that size.
 
-Browse all available Phosphor icons at: [https://molto.pages.dev/icons/#phosphor](https://molto.pages.dev/icons/#phosphor)
+Browse all available Material Symbols icons at: [https://molto.pages.dev/icons/#material](https://molto.pages.dev/icons/#material)
 
 | Input Type | Resolution |
 |------------|------------|
 | `number` | `rbxassetid://<number>` |
 | `"rbxassetid://..."` / `"https://..."` | passed through as-is |
-| any other `string` | resolved via the Phosphor icon provider |
+| any other `string` | resolved via the Material Symbols icon provider |
 
 ## Notifications
 
@@ -308,4 +315,5 @@ local Window = Ssamachi:CreateWindow({
 
 ```lua
 Ssamachi.SaveManager:SetIgnoreIndexes({ "ToggleKey", "SliderKey" })
+```
 ```
