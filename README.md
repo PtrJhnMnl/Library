@@ -1,311 +1,390 @@
-# Ssamachi UI Library
+### README.md
 
-A clean, modern Roblox UI library with smooth animations, built-in search, built-in minimizer, config saving, and rich element support.
+```markdown
+# Ssamachi
+
+A modern, animated Roblox UI library with fluent element creation, spring-based animations, configuration saving, search, and mobile support.
 
 ## Installation
 
 ```lua
-local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))()
+local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourname/ssamachi/main/Ssamachi.lua"))()
 ```
 
-## Creating a Window
+## Quick Start
 
 ```lua
+local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourname/ssamachi/main/Ssamachi.lua"))()
+
 local Window = Ssamachi:CreateWindow({
-    Title = "My Hub",
-    ConfigName = "myconfig",
+    Title = "Ssamachi",
+    SubTitle = "v1.0.1",
+    Icon = "settings",
+    Image = "settings",
+    Size = UDim2.fromOffset(600, 480),
+    TabWidth = 160,
+    ConfigName = "Ssamachi",
+    MinimizeKey = Enum.KeyCode.LeftControl,
+    Minimizer = false
 })
+
+local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
+local Section = Tab:AddSection("General", "list")
+local SubTab = Tab:AddSubTab("Sub", "list")
 ```
 
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Title` | `string` | required | Window title shown in the title bar |
-| `SubTitle` | `string` | `nil` | Secondary text next to the title |
-| `Icon` | `string \| number` | `nil` | Title bar icon (see [Icons](#icons)) |
-| `Image` | `string` | `nil` | Large image displayed above the sidebar tabs. Also used as the minimizer icon if enabled. |
-| `Size` | `UDim2` | `nil` | Initial window size |
-| `TabWidth` | `number` | `nil` | Sidebar width in pixels |
-| `MinimizeKey` | `Enum.KeyCode` | `LeftControl` | Key to hide/show the UI |
-| `ConfigName` | `string` | `nil` | Enables automatic config saving with this name |
-| `Minimizer` | `boolean` | `false` (PC) / `true` (Mobile) | Toggles the built-in floating minimizer button. On Mobile, this is always `true`. |
+## API Reference
 
-## Built-in Minimizer
+### `Ssamachi:CreateWindow(Config)`
 
-The minimizer is automatically created when the window is opened. It is a floating, draggable `50x50` button positioned at the top-right corner of the screen.
+Creates the main window.
 
-- Its icon is automatically set to the `Image` specified in `CreateWindow`. If no `Image` is provided, no icon is shown.
-- Dragging is always enabled, and dragging will not accidentally click the button.
-- Clicking it minimizes/restores the main window.
-- You no longer need to call `Ssamachi:CreateMinimizer()` manually.
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `SubTitle` | string | `nil` | No |
+| `Icon` | string / number | `nil` | No |
+| `Image` | string / number | `nil` | No |
+| `Size` | UDim2 | `UDim2.fromOffset(600, 480)` | No |
+| `TabWidth` | number | `160` | No |
+| `ConfigName` | string | `nil` | No |
+| `MinimizeKey` | Enum.KeyCode | `Enum.KeyCode.LeftControl` | No |
+| `Minimizer` | boolean | `false` | No |
 
-## Tabs
+Returns: `Window`
 
-```lua
-local Tab = Window:AddTab({
-    Title = "Main",
-})
-```
+---
 
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Title` | `string` | required | Tab display name |
-| `Icon` | `string \| number` | `nil` | Tab icon |
+### `Window:AddTab(Config)`
 
-### Selecting a Tab Programmatically
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Icon` | string / number | `nil` | No |
 
-```lua
-Window:SelectTab(Tab)
-Window:SelectTab("Main")
-```
+Returns: `Tab`
 
-## SubTabs
+---
 
-```lua
-local SubTab = Tab:AddSubTab({
-    Title = "Aimbot",
-})
-```
+### `Tab:AddSection(Title, Icon)`
 
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Title` | `string` | required | SubTab display name |
-| `Icon` | `string \| number` | `nil` | SubTab icon |
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Icon` | string / number | `nil` | No |
 
-When a SubTab exists, `Tab:AddSection(...)` automatically routes to the currently selected SubTab.
+Returns: `Section`
 
-## Sections
+---
 
-```lua
-local Section = Tab:AddSection({
-    Title = "Combat",
-})
-```
+### `Tab:AddSubTab(Title, Icon)`
 
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Title` | `string` | required | Section header text |
-| `Icon` | `string \| number` | `nil` | Section icon |
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Icon` | string / number | `nil` | No |
 
-Sections can also be added to a SubTab via `SubTab:AddSection(...)`.
+Returns: `SubTab`
 
-## Elements
+---
 
-Every element accepts these **common** arguments unless noted otherwise:
+### `SubTab:AddSection(Title, Icon)`
 
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Title` | `string` | required | Element title |
-| `Description` | `string` | `nil` | Secondary description |
-| `Icon` | `string \| number` | `nil` | Element icon |
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Icon` | string / number | `nil` | No |
 
-The first argument to every `Add*` method is a **unique string index** used by the config system. Pick any unique string per element.
+Returns: `Section`
 
-### Button
+---
+
+### Elements
+
+All elements accept `(Idx, Config)` where `Idx` is a unique identifier used for saving/loading.
+
+#### `Section:AddButton(Idx, Config)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Description` | string | `nil` | No |
+| `Icon` | string / number | `nil` | No |
+| `Callback` | function | `function() end` | No |
 
 ```lua
-Section:AddButton("ClickMe", {
+Section:AddButton("Ssamachi", {
     Title = "Click Me",
-    Callback = function(Value)
+    Description = "A button",
+    Icon = "mouse",
+    Callback = function()
         print("clicked")
-    end,
+    end
 })
 ```
 
-### Toggle
+---
+
+#### `Section:AddToggle(Idx, Config)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Description` | string | `nil` | No |
+| `Default` | boolean | `false` | No |
+| `Callback` | function | `function(Value) end` | No |
 
 ```lua
-local Toggle = Section:AddToggle("ToggleKey", {
-    Title = "Enabled",
+Section:AddToggle("Ssamachi", {
+    Title = "Toggle",
+    Description = "Toggles something",
+    Default = false,
     Callback = function(Value)
         print(Value)
-    end,
+    end
 })
 ```
 
-**Methods**
+---
+
+#### `Section:AddSlider(Idx, Config)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Description` | string | `nil` | No |
+| `Default` | number | `nil` | Yes |
+| `Min` | number | `nil` | Yes |
+| `Max` | number | `nil` | Yes |
+| `Rounding` | number | `nil` | Yes |
+| `Callback` | function | `function(Value) end` | No |
 
 ```lua
-Toggle:SetValue(true)
-Toggle:OnChanged(function(Value) end)
-Toggle:Destroy()
-```
-
-### Slider
-
-```lua
-local Slider = Section:AddSlider("SliderKey", {
-    Title = "Speed",
+Section:AddSlider("Ssamachi", {
+    Title = "Slider",
+    Description = "Slides",
+    Default = 50,
     Min = 0,
     Max = 100,
     Rounding = 1,
-    Callback = function(Value) end,
+    Callback = function(Value)
+        print(Value)
+    end
 })
 ```
 
-**Methods**
+---
+
+#### `Section:AddDropdown(Idx, Config)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Description` | string | `nil` | No |
+| `Values` | table | `nil` | Yes |
+| `Default` | string / table | `nil` | No |
+| `Multi` | boolean | `false` | No |
+| `AllowNull` | boolean | `false` | No |
+| `KeepSearch` | boolean | `false` | No |
+| `Callback` | function | `function(Value) end` | No |
 
 ```lua
-Slider:SetValue(50)
-Slider:OnChanged(function(Value) end)
-Slider:Destroy()
-```
-
-### Dropdown
-
-```lua
-local Dropdown = Section:AddDropdown("DropdownKey", {
-    Title = "Mode",
+Section:AddDropdown("Ssamachi", {
+    Title = "Dropdown",
+    Description = "Pick one",
     Values = { "One", "Two", "Three" },
-    Callback = function(Value) end,
+    Default = "One",
+    Multi = false,
+    Callback = function(Value)
+        print(Value)
+    end
 })
 ```
 
-**Methods**
+---
+
+#### `Section:AddKeybind(Idx, Config)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Description` | string | `nil` | No |
+| `Default` | string | `nil` | Yes |
+| `Mode` | string | `"Toggle"` | No |
+| `Callback` | function | `function(Value) end` | No |
+| `ChangedCallback` | function | `function(New) end` | No |
 
 ```lua
-Dropdown:SetValue("Two")
-Dropdown:SetValues({ "A", "B", "C" })
-Dropdown:GetActiveValues()
-Dropdown:OnChanged(function(Value) end)
-Dropdown:Destroy()
-```
-
-### Keybind
-
-```lua
-local Keybind = Section:AddKeybind("KeybindKey", {
-    Title = "Aim Key",
+Section:AddKeybind("Ssamachi", {
+    Title = "Keybind",
+    Description = "Bind a key",
     Default = "E",
-    Callback = function(Value) end,
+    Mode = "Toggle",
+    Callback = function(Value)
+        print(Value)
+    end
 })
 ```
 
-| Mode | Description |
-|------|-------------|
-| `Toggle` | Toggles state on key press |
-| `Hold` | State is `true` while key is held |
-| `Always` | Always returns `true` |
+---
 
-**Methods**
+#### `Section:AddColorpicker(Idx, Config)`
 
-```lua
-Keybind:GetState()
-Keybind:SetValue("F", "Hold")
-Keybind:OnChanged(function(Value) end)
-Keybind:OnClick(function(Value) end)
-Keybind:Destroy()
-```
-
-### Colorpicker
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Description` | string | `nil` | No |
+| `Default` | Color3 | `nil` | Yes |
+| `Transparency` | number | `0` | No |
+| `Callback` | function | `function(Value) end` | No |
 
 ```lua
-local Picker = Section:AddColorpicker("ColorKey", {
-    Title = "Accent Color",
-    Callback = function(Value) end,
+Section:AddColorpicker("Ssamachi", {
+    Title = "Color",
+    Description = "Pick a color",
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(Value)
+        print(Value)
+    end
 })
 ```
 
-**Methods**
+---
+
+#### `Section:AddInput(Idx, Config)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Description` | string | `nil` | No |
+| `Default` | string | `""` | No |
+| `Placeholder` | string | `""` | No |
+| `Numeric` | boolean | `false` | No |
+| `Finished` | boolean | `false` | No |
+| `MaxLength` | number | `nil` | No |
+| `Callback` | function | `function(Value) end` | No |
 
 ```lua
-Picker:SetValueRGB(Color3.fromRGB(0, 255, 0), 0.5)
-Picker:SetValue({ 0.5, 1, 1 }, 0)
-Picker:OnChanged(function(Value) end)
-Picker:Destroy()
-```
-
-### Input
-
-```lua
-local Input = Section:AddInput("InputKey", {
-    Title = "Name",
-    Callback = function(Value) end,
+Section:AddInput("Ssamachi", {
+    Title = "Input",
+    Description = "Type something",
+    Default = "",
+    Placeholder = "Enter text",
+    Numeric = false,
+    Finished = false,
+    Callback = function(Value)
+        print(Value)
+    end
 })
 ```
 
-**Methods**
+---
+
+#### `Section:AddParagraph(Config)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Content` | string | `""` | No |
+| `Icon` | string / number | `nil` | No |
 
 ```lua
-Input:SetValue("Hello")
-Input:OnChanged(function(Value) end)
-Input:Destroy()
-```
-
-### Paragraph
-
-```lua
-Section:AddParagraph("ParagraphKey", {
-    Title = "Information",
-    Content = "This is a paragraph of <b>rich</b> text.",
+Section:AddParagraph("Ssamachi", {
+    Title = "Info",
+    Content = "Some information here"
 })
 ```
 
-## Icons
+---
 
-The library uses the **Material Symbols** icon set as its default provider.
+### `Window:Dialog(Config)`
 
-Icons are applied automatically whenever you pass an `Icon` argument to a Tab, SubTab, Section, or Element — you don't need to call any function yourself.
-
-- Named icons (e.g. `"home"`, `"settings"`, `"search"`, `"circle"`) are resolved via Material Symbols.
-- Numeric icon IDs are converted to `rbxassetid://<number>`.
-- Strings starting with `rbxasset` or `http` are passed through as-is.
-
-> **Note:** Material Symbols does not ship a font. Icons are rendered as `24px` sprites and will look soft if scaled above that size.
-
-Browse all available Material Symbols icons at: [https://molto.pages.dev/icons/#material](https://molto.pages.dev/icons/#material)
-
-| Input Type | Resolution |
-|------------|------------|
-| `number` | `rbxassetid://<number>` |
-| `"rbxassetid://..."` / `"https://..."` | passed through as-is |
-| any other `string` | resolved via the Material Symbols icon provider |
-
-## Notifications
-
-```lua
-Ssamachi:Notify({
-    Title = "Success",
-    Content = "Script loaded successfully",
-    Duration = 5,
-})
-```
-
-## Dialogs
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `nil` | Yes |
+| `Content` | string | `nil` | Yes |
+| `Buttons` | table | `{}` | No |
 
 ```lua
 Window:Dialog({
-    Title = "Confirm Action",
-    Content = "Are you sure you want to continue?",
+    Title = "Confirm",
+    Content = "Are you sure?",
     Buttons = {
-        { Title = "Yes", Callback = function(Value) end },
-        { Title = "No" },
-    },
+        { Title = "Yes", Callback = function() print("yes") end },
+        { Title = "No", Callback = function() print("no") end }
+    }
 })
 ```
 
-## Config Save / Load
+---
 
-### Manual
+### `Ssamachi:Notify(Config)`
 
-```lua
-Ssamachi.SaveManager:SetFolder("MyHub")
-Ssamachi.SaveManager:Save("config1")
-Ssamachi.SaveManager:Load("config1")
-```
-
-### Auto-Save
-
-Pass `ConfigName` when creating a window. Every element change instantly triggers an autosave, and loading is deferred until all elements are registered.
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Title` | string | `"Title"` | No |
+| `Content` | string | `"Content"` | No |
+| `SubContent` | string | `""` | No |
+| `Duration` | number | `nil` | No |
 
 ```lua
-local Window = Ssamachi:CreateWindow({
-    Title = "My Hub",
-    ConfigName = "default",
+Ssamachi:Notify({
+    Title = "Ssamachi",
+    Content = "Hello",
+    SubContent = "World",
+    Duration = 5
 })
 ```
 
-### Ignoring Indexes
+---
 
-```lua
-Ssamachi.SaveManager:SetIgnoreIndexes({ "ToggleKey", "SliderKey" })
-```
+### `Ssamachi:SaveConfiguration(Name)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Name` | string | `Window.ConfigName` | No |
+
+Returns: `boolean`
+
+---
+
+### `Ssamachi:LoadConfiguration(Name)`
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Name` | string | `Window.ConfigName` | No |
+
+Returns: `boolean`
+
+---
+
+### Element Methods
+
+All created elements have access to the following shared methods where applicable:
+
+- `SetTitle(string)`
+- `SetDesc(string)`
+- `Visible(boolean)`
+- `Destroy()`
+
+Element-specific methods:
+
+- **Toggle**: `SetValue(boolean)`, `OnChanged(function)`
+- **Slider**: `SetValue(number)`, `OnChanged(function)`
+- **Dropdown**: `SetValue(string/table)`, `SetValues(table)`, `OnChanged(function)`
+- **Keybind**: `SetValue(string, string)`, `OnChanged(function)`, `OnClick(function)`, `GetState()`
+- **Colorpicker**: `SetValue(table, number)`, `SetValueRGB(Color3, number)`, `OnChanged(function)`
+- **Input**: `SetValue(string)`, `OnChanged(function)`
+
+---
+
+### Element Ordering
+
+Elements are ordered strictly by creation order. Each `Add*` call assigns an incrementing `LayoutOrder` internally, so the visual order always matches the code order. The same applies to `AddSection`, `AddSubTab`, and `AddTab`.
+
+---
+
+## License
+
+MIT
