@@ -1,6 +1,5 @@
 ### README.md
 
-```markdown
 # Ssamachi
 
 A modern, animated Roblox UI library with fluent element creation, spring-based animations, configuration saving, search, and mobile support.
