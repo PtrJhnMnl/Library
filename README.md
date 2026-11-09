@@ -1,20 +1,7 @@
 ## Installation
 
 ```lua
-local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourname/ssamachi/main/Ssamachi.lua"))()
-```
-
-## Quick Start
-
-```lua
-local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourname/ssamachi/main/Ssamachi.lua"))()
-
-local Window = Ssamachi:CreateWindow({
-    Title = "Ssamachi"
-})
-
-local Tab = Window:AddTab({ Title = "Main" })
-local Section = Tab:AddSection("General")
+local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJhnMnl/Library/refs/heads/main/Ssamachi.lua"))()
 ```
 
 ## API Reference
