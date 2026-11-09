@@ -10,27 +10,16 @@ local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/your
 local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourname/ssamachi/main/Ssamachi.lua"))()
 
 local Window = Ssamachi:CreateWindow({
-    Title = "Ssamachi",
-    SubTitle = "v1.0.1",
-    Icon = "settings",
-    Image = "settings",
-    Size = UDim2.fromOffset(600, 480),
-    TabWidth = 160,
-    ConfigName = "Ssamachi",
-    MinimizeKey = Enum.KeyCode.LeftControl,
-    Minimizer = false
+    Title = "Ssamachi"
 })
 
-local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
-local Section = Tab:AddSection("General", "list")
-local SubTab = Tab:AddSubTab("Sub", "list")
+local Tab = Window:AddTab({ Title = "Main" })
+local Section = Tab:AddSection("General")
 ```
 
 ## API Reference
 
 ### `Ssamachi:CreateWindow(Config)`
-
-Creates the main window.
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -46,6 +35,10 @@ Creates the main window.
 
 Returns: `Window`
 
+```lua
+local Window = Ssamachi:CreateWindow({ Title = "Ssamachi" })
+```
+
 ---
 
 ### `Window:AddTab(Config)`
@@ -56,6 +49,10 @@ Returns: `Window`
 | `Icon` | string / number | `nil` | No |
 
 Returns: `Tab`
+
+```lua
+local Tab = Window:AddTab({ Title = "Main" })
+```
 
 ---
 
@@ -68,6 +65,10 @@ Returns: `Tab`
 
 Returns: `Section`
 
+```lua
+local Section = Tab:AddSection("General")
+```
+
 ---
 
 ### `Tab:AddSubTab(Title, Icon)`
@@ -79,6 +80,10 @@ Returns: `Section`
 
 Returns: `SubTab`
 
+```lua
+local SubTab = Tab:AddSubTab("Sub")
+```
+
 ---
 
 ### `SubTab:AddSection(Title, Icon)`
@@ -89,6 +94,10 @@ Returns: `SubTab`
 | `Icon` | string / number | `nil` | No |
 
 Returns: `Section`
+
+```lua
+local SubSection = SubTab:AddSection("Sub General")
+```
 
 ---
 
@@ -106,14 +115,7 @@ All elements accept `(Idx, Config)` where `Idx` is a unique identifier used for 
 | `Callback` | function | `function() end` | No |
 
 ```lua
-Section:AddButton("Ssamachi", {
-    Title = "Click Me",
-    Description = "A button",
-    Icon = "mouse",
-    Callback = function()
-        print("clicked")
-    end
-})
+Section:AddButton("Ssamachi", { Title = "Click Me" })
 ```
 
 ---
@@ -128,14 +130,7 @@ Section:AddButton("Ssamachi", {
 | `Callback` | function | `function(Value) end` | No |
 
 ```lua
-Section:AddToggle("Ssamachi", {
-    Title = "Toggle",
-    Description = "Toggles something",
-    Default = false,
-    Callback = function(Value)
-        print(Value)
-    end
-})
+Section:AddToggle("Ssamachi", { Title = "Toggle" })
 ```
 
 ---
@@ -155,14 +150,10 @@ Section:AddToggle("Ssamachi", {
 ```lua
 Section:AddSlider("Ssamachi", {
     Title = "Slider",
-    Description = "Slides",
     Default = 50,
     Min = 0,
     Max = 100,
-    Rounding = 1,
-    Callback = function(Value)
-        print(Value)
-    end
+    Rounding = 1
 })
 ```
 
@@ -184,13 +175,7 @@ Section:AddSlider("Ssamachi", {
 ```lua
 Section:AddDropdown("Ssamachi", {
     Title = "Dropdown",
-    Description = "Pick one",
-    Values = { "One", "Two", "Three" },
-    Default = "One",
-    Multi = false,
-    Callback = function(Value)
-        print(Value)
-    end
+    Values = { "One", "Two", "Three" }
 })
 ```
 
@@ -210,12 +195,7 @@ Section:AddDropdown("Ssamachi", {
 ```lua
 Section:AddKeybind("Ssamachi", {
     Title = "Keybind",
-    Description = "Bind a key",
-    Default = "E",
-    Mode = "Toggle",
-    Callback = function(Value)
-        print(Value)
-    end
+    Default = "E"
 })
 ```
 
@@ -234,12 +214,7 @@ Section:AddKeybind("Ssamachi", {
 ```lua
 Section:AddColorpicker("Ssamachi", {
     Title = "Color",
-    Description = "Pick a color",
-    Default = Color3.fromRGB(255, 0, 0),
-    Transparency = 0,
-    Callback = function(Value)
-        print(Value)
-    end
+    Default = Color3.fromRGB(255, 0, 0)
 })
 ```
 
@@ -259,17 +234,7 @@ Section:AddColorpicker("Ssamachi", {
 | `Callback` | function | `function(Value) end` | No |
 
 ```lua
-Section:AddInput("Ssamachi", {
-    Title = "Input",
-    Description = "Type something",
-    Default = "",
-    Placeholder = "Enter text",
-    Numeric = false,
-    Finished = false,
-    Callback = function(Value)
-        print(Value)
-    end
-})
+Section:AddInput("Ssamachi", { Title = "Input" })
 ```
 
 ---
@@ -283,10 +248,7 @@ Section:AddInput("Ssamachi", {
 | `Icon` | string / number | `nil` | No |
 
 ```lua
-Section:AddParagraph("Ssamachi", {
-    Title = "Info",
-    Content = "Some information here"
-})
+Section:AddParagraph("Ssamachi", { Title = "Info" })
 ```
 
 ---
@@ -322,12 +284,7 @@ Window:Dialog({
 | `Duration` | number | `nil` | No |
 
 ```lua
-Ssamachi:Notify({
-    Title = "Ssamachi",
-    Content = "Hello",
-    SubContent = "World",
-    Duration = 5
-})
+Ssamachi:Notify({ Title = "Ssamachi" })
 ```
 
 ---
@@ -340,6 +297,10 @@ Ssamachi:Notify({
 
 Returns: `boolean`
 
+```lua
+Ssamachi:SaveConfiguration()
+```
+
 ---
 
 ### `Ssamachi:LoadConfiguration(Name)`
@@ -349,6 +310,10 @@ Returns: `boolean`
 | `Name` | string | `Window.ConfigName` | No |
 
 Returns: `boolean`
+
+```lua
+Ssamachi:LoadConfiguration()
+```
 
 ---
 
