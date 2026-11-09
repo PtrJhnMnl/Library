@@ -3,12 +3,9 @@ local CloneRef = cloneref or function(Object)
 end
 
 local UserInputService = CloneRef(game:GetService("UserInputService"))
-local TweenService = CloneRef(game:GetService("TweenService"))
 local TextService = CloneRef(game:GetService("TextService"))
 local HttpService = CloneRef(game:GetService("HttpService"))
-local RunService = CloneRef(game:GetService("RunService"))
 local Workspace = CloneRef(game:GetService("Workspace"))
-local CoreGui = CloneRef(game:GetService("CoreGui"))
 local Players = CloneRef(game:GetService("Players"))
 
 local LocalPlayer = Players.LocalPlayer
@@ -20,7 +17,6 @@ Icons.SetProvider("material")
 
 local Mobile = table.find({ Enum.Platform.IOS, Enum.Platform.Android }, UserInputService:GetPlatform()) ~= nil
 
-local RenderStepped = RunService.RenderStepped
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 
 local Themes = {
@@ -83,438 +79,9 @@ local Library = {
     Minimizer = nil
 }
 
-local function IsMotor(Value)
-    local MotorType = tostring(Value):match("^Motor%((.+)%)$")
-
-    if MotorType then
-        return true, MotorType
-    end
-
-    return false
-end
-
-local Connection = {}
-Connection.__index = Connection
-
-function Connection.New(Signal, Handler)
-    return setmetatable({
-        Signal = Signal,
-        Connected = true,
-        Handler = Handler,
-    }, Connection)
-end
-
-function Connection:Disconnect()
-    if self.Connected then
-        self.Connected = false
-
-        for Index, Conn in self.Signal._connections do
-            if Conn == self then
-                table.remove(self.Signal._connections, Index)
-                return
-            end
-        end
-    end
-end
-
-local Signal = {}
-Signal.__index = Signal
-
-function Signal.New()
-    return setmetatable({
-        _connections = {},
-        _threads = {},
-    }, Signal)
-end
-
-function Signal:Fire(...)
-    for _, Conn in self._connections do
-        Conn.Handler(...)
-    end
-
-    for _, Thread in self._threads do
-        coroutine.resume(Thread, ...)
-    end
-
-    self._threads = {}
-end
-
-function Signal:Connect(Handler)
-    local Conn = Connection.New(self, Handler)
-
-    table.insert(self._connections, Conn)
-
-    return Conn
-end
-
-function Signal:Wait()
-    table.insert(self._threads, coroutine.running())
-
-    return coroutine.yield()
-end
-
-local Linear = {}
-Linear.__index = Linear
-
-function Linear.New(TargetValue, Options)
-    assert(TargetValue, "Missing argument #1: TargetValue")
-
-    Options = Options or {}
-
-    return setmetatable({
-        _targetValue = TargetValue,
-        _velocity = Options.velocity or 1,
-    }, Linear)
-end
-
-function Linear:Step(State, Dt)
-    local Position = State.value
-    local Velocity = self._velocity
-    local Goal = self._targetValue
-    local DPos = Dt * Velocity
-    local Complete = DPos >= math.abs(Goal - Position)
-
-    Position = Position + DPos * (Goal > Position and 1 or -1)
-
-    if Complete then
-        Position = self._targetValue
-        Velocity = 0
-    end
-
-    return {
-        complete = Complete,
-        value = Position,
-        velocity = Velocity,
-    }
-end
-
-local Instant = {}
-Instant.__index = Instant
-
-function Instant.New(TargetValue)
-    return setmetatable({
-        _targetValue = TargetValue,
-    }, Instant)
-end
-
-function Instant:Step()
-    return {
-        complete = true,
-        value = self._targetValue,
-    }
-end
-
-local VELOCITY_THRESHOLD = 0.001
-local POSITION_THRESHOLD = 0.001
-local EPS = 0.0001
-
-local Spring = {}
-Spring.__index = Spring
-
-function Spring.New(TargetValue, Options)
-    assert(TargetValue, "Missing argument #1: TargetValue")
-
-    Options = Options or {}
-
-    return setmetatable({
-        _targetValue = TargetValue,
-        _frequency = Options.frequency or 4,
-        _dampingRatio = Options.dampingRatio or 1,
-    }, Spring)
-end
-
-function Spring:Step(State, Dt)
-    local D = self._dampingRatio
-    local F = self._frequency * 2 * math.pi
-    local G = self._targetValue
-    local P0 = State.value
-    local V0 = State.velocity or 0
-    local Offset = P0 - G
-    local Decay = math.exp(-D * F * Dt)
-
-    local P1, V1
-
-    if D == 1 then
-        P1 = (Offset * (1 + F * Dt) + V0 * Dt) * Decay + G
-        V1 = (V0 * (1 - F * Dt) - Offset * (F * F * Dt)) * Decay
-    elseif D < 1 then
-        local C = math.sqrt(1 - D * D)
-        local I = math.cos(F * C * Dt)
-        local J = math.sin(F * C * Dt)
-
-        local Z
-
-        if C > EPS then
-            Z = J / C
-        else
-            local A = Dt * F
-            Z = A + ((A * A) * (C * C) * (C * C) / 20 - C * C) * (A * A * A) / 6
-        end
-
-        local Y
-
-        if F * C > EPS then
-            Y = J / (F * C)
-        else
-            local B = F * C
-            Y = Dt + ((Dt * Dt) * (B * B) * (B * B) / 20 - B * B) * (Dt * Dt * Dt) / 6
-        end
-
-        P1 = (Offset * (I + D * Z) + V0 * Y) * Decay + G
-        V1 = (V0 * (I - Z * D) - Offset * (Z * F)) * Decay
-    else
-        local C = math.sqrt(D * D - 1)
-        local R1 = -F * (D - C)
-        local R2 = -F * (D + C)
-        local Co2 = (V0 - Offset * R1) / (2 * F * C)
-        local Co1 = Offset - Co2
-        local E1 = Co1 * math.exp(R1 * Dt)
-        local E2 = Co2 * math.exp(R2 * Dt)
-
-        P1 = E1 + E2 + G
-        V1 = E1 * R1 + E2 * R2
-    end
-
-    local Complete = math.abs(V1) < VELOCITY_THRESHOLD and math.abs(P1 - G) < POSITION_THRESHOLD
-
-    return {
-        complete = Complete,
-        value = Complete and G or P1,
-        velocity = V1,
-    }
-end
-
-local Noop = function() end
-
-local BaseMotor = {}
-BaseMotor.__index = BaseMotor
-
-function BaseMotor.New()
-    return setmetatable({
-        _onStep = Signal.New(),
-        _onStart = Signal.New(),
-        _onComplete = Signal.New(),
-    }, BaseMotor)
-end
-
-function BaseMotor:OnStep(Handler)
-    return self._onStep:Connect(Handler)
-end
-
-function BaseMotor:OnStart(Handler)
-    return self._onStart:Connect(Handler)
-end
-
-function BaseMotor:OnComplete(Handler)
-    return self._onComplete:Connect(Handler)
-end
-
-function BaseMotor:Start()
-    if not self._connection then
-        self._connection = RunService.RenderStepped:Connect(function(DeltaTime)
-            self:Step(DeltaTime)
-        end)
-    end
-end
-
-function BaseMotor:Stop()
-    if self._connection then
-        self._connection:Disconnect()
-        self._connection = nil
-    end
-end
-
-BaseMotor.Destroy = BaseMotor.Stop
-BaseMotor.Step = Noop
-BaseMotor.GetValue = Noop
-BaseMotor.SetGoal = Noop
-
-function BaseMotor:__tostring()
-    return "Motor"
-end
-
-local SingleMotor = setmetatable({}, BaseMotor)
-SingleMotor.__index = SingleMotor
-
-function SingleMotor.New(InitialValue, UseImplicitConnections)
-    assert(InitialValue, "Missing argument #1: InitialValue")
-    assert(typeof(InitialValue) == "number", "InitialValue must be a number!")
-
-    local Self = setmetatable(BaseMotor.New(), SingleMotor)
-
-    if UseImplicitConnections ~= nil then
-        Self._useImplicitConnections = UseImplicitConnections
-    else
-        Self._useImplicitConnections = true
-    end
-
-    Self._goal = nil
-    Self._state = {
-        complete = true,
-        value = InitialValue,
-    }
-
-    return Self
-end
-
-function SingleMotor:Step(DeltaTime)
-    if self._state.complete then
-        return true
-    end
-
-    local NewState = self._goal:Step(self._state, DeltaTime)
-
-    self._state = NewState
-
-    self._onStep:Fire(NewState.value)
-
-    if NewState.complete then
-        if self._useImplicitConnections then
-            self:Stop()
-        end
-
-        self._onComplete:Fire()
-    end
-
-    return NewState.complete
-end
-
-function SingleMotor:GetValue()
-    return self._state.value
-end
-
-function SingleMotor:SetGoal(Goal)
-    self._state.complete = false
-    self._goal = Goal
-
-    self._onStart:Fire()
-
-    if self._useImplicitConnections then
-        self:Start()
-    end
-end
-
-function SingleMotor:__tostring()
-    return "Motor(Single)"
-end
-
-local GroupMotor = setmetatable({}, BaseMotor)
-GroupMotor.__index = GroupMotor
-
-local function ToMotor(Value)
-    if IsMotor(Value) then
-        return Value
-    end
-
-    local ValueType = typeof(Value)
-
-    if ValueType == "number" then
-        return SingleMotor.New(Value, false)
-    elseif ValueType == "table" then
-        return GroupMotor.New(Value, false)
-    end
-
-    error(("Unable to convert %q to motor; type %s is unsupported"):format(Value, ValueType), 2)
-end
-
-function GroupMotor.New(InitialValues, UseImplicitConnections)
-    assert(InitialValues, "Missing argument #1: InitialValues")
-    assert(typeof(InitialValues) == "table", "InitialValues must be a table!")
-    assert(not InitialValues.step, 'InitialValues contains disallowed property "step".')
-
-    local Self = setmetatable(BaseMotor.New(), GroupMotor)
-
-    if UseImplicitConnections ~= nil then
-        Self._useImplicitConnections = UseImplicitConnections
-    else
-        Self._useImplicitConnections = true
-    end
-
-    Self._complete = true
-    Self._motors = {}
-
-    for Key, Value in InitialValues do
-        Self._motors[Key] = ToMotor(Value)
-    end
-
-    return Self
-end
-
-function GroupMotor:Step(DeltaTime)
-    if self._complete then
-        return true
-    end
-
-    local AllComplete = true
-
-    for _, Motor in self._motors do
-        local Complete = Motor:Step(DeltaTime)
-
-        if not Complete then
-            AllComplete = false
-        end
-    end
-
-    self._onStep:Fire(self:GetValue())
-
-    if AllComplete then
-        if self._useImplicitConnections then
-            self:Stop()
-        end
-
-        self._complete = true
-
-        self._onComplete:Fire()
-    end
-
-    return AllComplete
-end
-
-function GroupMotor:SetGoal(Goals)
-    assert(not Goals.step, 'Goals contains disallowed property "step".')
-
-    self._complete = false
-
-    self._onStart:Fire()
-
-    for Key, Goal in Goals do
-        local Motor = assert(self._motors[Key], ("Unknown motor for key %s"):format(Key))
-
-        Motor:SetGoal(Goal)
-    end
-
-    if self._useImplicitConnections then
-        self:Start()
-    end
-end
-
-function GroupMotor:GetValue()
-    local Values = {}
-
-    for Key, Motor in self._motors do
-        Values[Key] = Motor:GetValue()
-    end
-
-    return Values
-end
-
-function GroupMotor:__tostring()
-    return "Motor(Group)"
-end
-
-local Flipper = {
-    SingleMotor = SingleMotor,
-    GroupMotor = GroupMotor,
-    Instant = Instant,
-    Linear = Linear,
-    Spring = Spring,
-    IsMotor = IsMotor,
-}
-
 local Creator = {
     Registry = {},
     Signals = {},
-    TransparencyMotors = {},
     DefaultProperties = {
         ScreenGui = {
             ResetOnSpawn = false,
@@ -604,44 +171,44 @@ end
 function Creator.UpdateTheme()
     Creator.Theme = "Darker"
 
-    for Instance, Object in Creator.Registry do
-        for Property, ColorIdx in Object.Properties do
-            local ThemeValue = Creator.GetThemeProperty(ColorIdx)
+    task.defer(function()
+        for ObjectRef, Data in Creator.Registry do
+            if ObjectRef and Data and Data.Properties then
+                for PropName, ThemeKey in Data.Properties do
+                    local ThemeValue = Creator.GetThemeProperty(ThemeKey)
 
-            if ThemeValue then
-                Instance[Property] = ThemeValue
+                    if ThemeValue ~= nil then
+                        pcall(function()
+                            ObjectRef[PropName] = ThemeValue
+                        end)
+                    end
+                end
             end
         end
-    end
-
-    local Transparency = Creator.GetThemeProperty("ElementTransparency")
-
-    if Transparency then
-        for _, Motor in Creator.TransparencyMotors do
-            Motor:SetGoal(Flipper.Instant.New(Transparency))
-        end
-    end
+    end)
 end
 
-function Creator.AddThemeObject(Object, Properties)
+function Creator.AddThemeObject(ObjectRef, Properties)
     local Idx = #Creator.Registry + 1
     local Data = {
-        Object = Object,
+        Object = ObjectRef,
         Properties = Properties,
         Idx = Idx,
     }
 
-    Creator.Registry[Object] = Data
+    Creator.Registry[ObjectRef] = Data
 
     Creator.UpdateTheme()
 
-    return Object
+    return ObjectRef
 end
 
-function Creator.OverrideTag(Object, Properties)
-    Creator.Registry[Object].Properties = Properties
+function Creator.OverrideTag(ObjectRef, Properties)
+    if Creator.Registry[ObjectRef] then
+        Creator.Registry[ObjectRef].Properties = Properties
 
-    Creator.UpdateTheme()
+        Creator.UpdateTheme()
+    end
 end
 
 function Creator.New(Name, Properties, Children)
@@ -668,44 +235,11 @@ function Creator.New(Name, Properties, Children)
     return Object
 end
 
-function Creator.SpringMotor(Initial, Instance, Prop, IgnoreDialogCheck, ResetOnThemeChange)
-    IgnoreDialogCheck = IgnoreDialogCheck or false
-    ResetOnThemeChange = ResetOnThemeChange or false
-
-    local Motor = Flipper.SingleMotor.New(Initial)
-
-    Motor:OnStep(function(Value)
-        pcall(function()
-            Instance[Prop] = Value
-        end)
-    end)
-
-    if ResetOnThemeChange then
-        table.insert(Creator.TransparencyMotors, Motor)
-    end
-
-    local function SetValue(Value, Ignore)
-        Ignore = Ignore or false
-
-        if not IgnoreDialogCheck then
-            if not Ignore then
-                if Prop == "BackgroundTransparency" and Library.DialogOpen then
-                    return
-                end
-            end
-        end
-
-        Motor:SetGoal(Flipper.Spring.New(Value, { frequency = 8 }))
-    end
-
-    return Motor, SetValue
-end
-
 Library.Creator = Creator
 
 local New = Creator.New
 
-local ParentGui = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+local ParentGui = (gethui and gethui()) or LocalPlayer:WaitForChild("PlayerGui")
 local GUI = New("ScreenGui", {
     Parent = ParentGui,
 })
@@ -785,8 +319,6 @@ end
 local Components = {}
 
 Components.Element = (function()
-    local Spring = Flipper.Spring.New
-
     return function(Title, Desc, Parent, Hover, Options)
         local Element = {}
         Options = Options or {}
@@ -888,7 +420,7 @@ Components.Element = (function()
             Parent = Parent,
             AutomaticSize = Enum.AutomaticSize.Y,
             Text = "",
-            LayoutOrder = 7,
+            LayoutOrder = Options.LayoutOrder or 0,
             ThemeTag = {
                 BackgroundColor3 = "Element",
                 BackgroundTransparency = "ElementTransparency",
@@ -1024,28 +556,20 @@ Components.Element = (function()
         end
 
         if Hover then
-            local Motor, SetTransparency = Creator.SpringMotor(
-                Creator.GetThemeProperty("ElementTransparency"),
-                Element.Frame,
-                "BackgroundTransparency",
-                false,
-                true
-            )
-
             Creator.AddSignal(Element.Frame.MouseEnter, function()
-                SetTransparency(Creator.GetThemeProperty("ElementTransparency") - Creator.GetThemeProperty("HoverChange"))
+                Element.Frame.BackgroundTransparency = Creator.GetThemeProperty("ElementTransparency") - Creator.GetThemeProperty("HoverChange")
             end)
 
             Creator.AddSignal(Element.Frame.MouseLeave, function()
-                SetTransparency(Creator.GetThemeProperty("ElementTransparency"))
+                Element.Frame.BackgroundTransparency = Creator.GetThemeProperty("ElementTransparency")
             end)
 
             Creator.AddSignal(Element.Frame.MouseButton1Down, function()
-                SetTransparency(Creator.GetThemeProperty("ElementTransparency") + Creator.GetThemeProperty("HoverChange"))
+                Element.Frame.BackgroundTransparency = Creator.GetThemeProperty("ElementTransparency") + Creator.GetThemeProperty("HoverChange")
             end)
 
             Creator.AddSignal(Element.Frame.MouseButton1Up, function()
-                SetTransparency(Creator.GetThemeProperty("ElementTransparency") - Creator.GetThemeProperty("HoverChange"))
+                Element.Frame.BackgroundTransparency = Creator.GetThemeProperty("ElementTransparency") - Creator.GetThemeProperty("HoverChange")
             end)
         end
 
@@ -1054,11 +578,12 @@ Components.Element = (function()
 end)()
 
 Components.Section = (function()
-    return function(Title, Parent, Icon)
+    return function(Title, Parent, Icon, LayoutOrder)
         local Section = {}
 
         Section.Layout = New("UIListLayout", {
             Padding = UDim.new(0, 5),
+            SortOrder = Enum.SortOrder.LayoutOrder,
         })
 
         Section.Container = New("Frame", {
@@ -1115,7 +640,7 @@ Components.Section = (function()
         Section.Root = New("Frame", {
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 26),
-            LayoutOrder = 7,
+            LayoutOrder = LayoutOrder or 0,
             Parent = Parent,
         }, {
             SectionHeader,
@@ -1131,6 +656,8 @@ Components.Section = (function()
             Library.Window.RegisterElement(Section.Root, Title, "Section")
         end
 
+        Section.ElementLayoutCounter = 0
+
         if Library.AttachElementMethods then
             Library.AttachElementMethods(Section)
         end
@@ -1140,17 +667,11 @@ Components.Section = (function()
 end)()
 
 Components.Tab = (function()
-    local Spring = Flipper.Spring.New
-    local Instant = Flipper.Instant.New
-
     local TabModule = {
         Window = nil,
         Tabs = {},
-        Containers = {},
         SelectedTab = 0,
         TabCount = 0,
-        AnimationTask = nil,
-        CurrentAnimationTab = 0,
     }
 
     function TabModule:Init(Window)
@@ -1177,6 +698,7 @@ Components.Tab = (function()
             Selected = false,
             Name = Title,
             Type = "Tab",
+            SectionCounter = 0,
         }
 
         local HasIcon = Icon ~= nil and Icon ~= ""
@@ -1201,6 +723,7 @@ Components.Tab = (function()
             BackgroundTransparency = 0.92,
             Parent = Parent,
             ZIndex = 10,
+            LayoutOrder = TabIndex,
             ThemeTag = {
                 BackgroundColor3 = "Tab",
             },
@@ -1238,10 +761,9 @@ Components.Tab = (function()
             SortOrder = Enum.SortOrder.LayoutOrder,
         })
 
-        Tab.ContainerAnim = New("CanvasGroup", {
+        Tab.ContainerAnim = New("Frame", {
             Size = UDim2.fromScale(1, 1),
             BackgroundTransparency = 1,
-            GroupTransparency = 0,
             Parent = Window.ContainerHolder,
             Visible = false,
             Position = UDim2.fromOffset(0, 0),
@@ -1272,48 +794,32 @@ Components.Tab = (function()
             }),
         })
 
-        Tab.ContainerXMotor = Flipper.SingleMotor.New(0)
-        Tab.ContainerTransparencyMotor = Flipper.SingleMotor.New(0)
-
-        Tab.ContainerXMotor:OnStep(function(Value)
-            if Tab.ContainerAnim and Tab.ContainerAnim.Parent then
-                Tab.ContainerAnim.Position = UDim2.fromOffset(Value, 0)
-            end
-        end)
-
-        Tab.ContainerTransparencyMotor:OnStep(function(Value)
-            if Tab.ContainerAnim and Tab.ContainerAnim.Parent then
-                Tab.ContainerAnim.GroupTransparency = Value
-            end
-        end)
-
         Creator.AddSignal(ContainerLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
             Tab.ContainerFrame.CanvasSize = UDim2.new(0, 0, 0, ContainerLayout.AbsoluteContentSize.Y + 2)
         end)
 
-        Tab.Motor, Tab.SetTransparency = Creator.SpringMotor(0.92, Tab.Frame, "BackgroundTransparency")
-
         Creator.AddSignal(Tab.Frame.MouseEnter, function()
-            Tab.SetTransparency(Tab.Selected and 0.85 or 0.87)
+            if not Tab.Selected then
+                Tab.Frame.BackgroundTransparency = 0.87
+            end
         end)
 
         Creator.AddSignal(Tab.Frame.MouseLeave, function()
-            Tab.SetTransparency(Tab.Selected and 0.89 or 0.92)
+            Tab.Frame.BackgroundTransparency = Tab.Selected and 0.89 or 0.92
         end)
 
         Creator.AddSignal(Tab.Frame.MouseButton1Down, function()
-            Tab.SetTransparency(0.92)
+            Tab.Frame.BackgroundTransparency = 0.92
         end)
 
         Creator.AddSignal(Tab.Frame.MouseButton1Up, function()
-            Tab.SetTransparency(Tab.Selected and 0.85 or 0.89)
+            Tab.Frame.BackgroundTransparency = Tab.Selected and 0.85 or 0.89
         end)
 
         Creator.AddSignal(Tab.Frame.MouseButton1Click, function()
             TabModule:SelectTab(TabIndex)
         end)
 
-        TabModule.Containers[TabIndex] = Tab.ContainerAnim
         TabModule.Tabs[TabIndex] = Tab
 
         Tab.Container = Tab.ContainerFrame
@@ -1395,6 +901,7 @@ Components.Tab = (function()
                 BackgroundTransparency = 0.92,
                 Parent = self.SubTabHolder,
                 Text = "",
+                LayoutOrder = SubTabIndex,
                 ThemeTag = {
                     BackgroundColor3 = "Tab",
                 },
@@ -1442,10 +949,9 @@ Components.Tab = (function()
                 }),
             })
 
-            local SubTabContainerAnim = New("CanvasGroup", {
+            local SubTabContainerAnim = New("Frame", {
                 Size = UDim2.fromScale(1, 1),
                 BackgroundTransparency = 1,
-                GroupTransparency = 0,
                 Parent = self.SubTabContainerHolder,
                 Visible = false,
                 Position = UDim2.fromOffset(0, 0),
@@ -1485,33 +991,17 @@ Components.Tab = (function()
                 SubTabContainer.CanvasSize = UDim2.new(0, 0, 0, SubTabLayout.AbsoluteContentSize.Y + 2)
             end)
 
-            local SubTabXMotor = Flipper.SingleMotor.New(0)
-            local SubTabTransparencyMotor = Flipper.SingleMotor.New(0)
-
-            SubTabXMotor:OnStep(function(Value)
-                if SubTabContainerAnim and SubTabContainerAnim.Parent then
-                    SubTabContainerAnim.Position = UDim2.fromOffset(Value, 0)
-                end
-            end)
-
-            SubTabTransparencyMotor:OnStep(function(Value)
-                if SubTabContainerAnim and SubTabContainerAnim.Parent then
-                    SubTabContainerAnim.GroupTransparency = Value
-                end
-            end)
-
-            local SubTabMotor, SubTabSetTransparency = Creator.SpringMotor(0.92, SubTabButton, "BackgroundTransparency")
             local SubTabStroke = SubTabButton:FindFirstChild("UIStroke")
 
             local function UpdateSubTabAppearance()
                 if self.SelectedSubTab == SubTabIndex then
-                    SubTabSetTransparency(0.75)
+                    SubTabButton.BackgroundTransparency = 0.75
 
                     if SubTabStroke then
                         SubTabStroke.Transparency = 0
                     end
                 else
-                    SubTabSetTransparency(0.92)
+                    SubTabButton.BackgroundTransparency = 0.92
 
                     if SubTabStroke then
                         SubTabStroke.Transparency = 1
@@ -1521,7 +1011,7 @@ Components.Tab = (function()
 
             Creator.AddSignal(SubTabButton.MouseEnter, function()
                 if self.SelectedSubTab ~= SubTabIndex then
-                    SubTabSetTransparency(0.87)
+                    SubTabButton.BackgroundTransparency = 0.87
                 end
             end)
 
@@ -1530,7 +1020,7 @@ Components.Tab = (function()
             end)
 
             Creator.AddSignal(SubTabButton.MouseButton1Down, function()
-                SubTabSetTransparency(0.92)
+                SubTabButton.BackgroundTransparency = 0.92
             end)
 
             Creator.AddSignal(SubTabButton.MouseButton1Up, function()
@@ -1549,10 +1039,8 @@ Components.Tab = (function()
                 Button = SubTabButton,
                 Container = SubTabContainer,
                 ContainerAnim = SubTabContainerAnim,
-                XMotor = SubTabXMotor,
-                TransparencyMotor = SubTabTransparencyMotor,
-                SetTransparency = SubTabSetTransparency,
                 Selected = false,
+                SectionCounter = 0,
             }
 
             self.SubTabs[SubTabIndex] = SubTab
@@ -1563,11 +1051,14 @@ Components.Tab = (function()
             end
 
             function SubTab:AddSection(SectionTitle, SectionIcon)
+                self.SectionCounter = (self.SectionCounter or 0) + 1
+
                 local Section = { Type = "Section" }
-                local SectionFrame = Components.Section(SectionTitle, SubTab.Container, SectionIcon)
+                local SectionFrame = Components.Section(SectionTitle, SubTab.Container, SectionIcon, self.SectionCounter)
 
                 Section.Container = SectionFrame.Container
                 Section.ScrollFrame = SubTab.Container
+                Section.ElementLayoutCounter = SectionFrame.ElementLayoutCounter
 
                 if Library.AttachElementMethods then
                     Library.AttachElementMethods(Section)
@@ -1588,16 +1079,6 @@ Components.Tab = (function()
                 return
             end
 
-            local PreviousSubTab = self.SelectedSubTab
-            local Direction = (PreviousSubTab > 0 and SubTabIndex > PreviousSubTab) and 1 or -1
-
-            if PreviousSubTab == 0 then
-                Direction = 0
-            end
-
-            local ContainerSize = self.SubTabContainerHolder and self.SubTabContainerHolder.AbsoluteSize.X or 500
-            local SlideDistance = math.min(ContainerSize * 0.15, 60)
-
             self.SelectedSubTab = SubTabIndex
 
             for Idx, SubTabObj in self.SubTabs do
@@ -1606,13 +1087,13 @@ Components.Tab = (function()
                 local SubTabStroke = SubTabObj.Button:FindFirstChild("UIStroke")
 
                 if Idx == SubTabIndex then
-                    SubTabObj.SetTransparency(0.75)
+                    SubTabObj.Button.BackgroundTransparency = 0.75
 
                     if SubTabStroke then
                         SubTabStroke.Transparency = 0
                     end
                 else
-                    SubTabObj.SetTransparency(0.92)
+                    SubTabObj.Button.BackgroundTransparency = 0.92
 
                     if SubTabStroke then
                         SubTabStroke.Transparency = 1
@@ -1620,74 +1101,10 @@ Components.Tab = (function()
                 end
             end
 
-            if PreviousSubTab > 0 and PreviousSubTab ~= SubTabIndex and self.SubTabs[PreviousSubTab] and self.SubTabs[SubTabIndex] then
-                local OldContainer = self.SubTabs[PreviousSubTab].ContainerAnim
-                local NewContainer = self.SubTabs[SubTabIndex].ContainerAnim
-                local OldSubTab = self.SubTabs[PreviousSubTab]
-                local NewSubTab = self.SubTabs[SubTabIndex]
-
-                for Idx, Container in self.SubTabContainers do
-                    if Container and Idx ~= PreviousSubTab and Idx ~= SubTabIndex then
-                        Container.Visible = false
-                        Container.Position = UDim2.fromOffset(0, 0)
-                        Container.GroupTransparency = 0
-
-                        if self.SubTabs[Idx] and self.SubTabs[Idx].XMotor and self.SubTabs[Idx].TransparencyMotor then
-                            self.SubTabs[Idx].XMotor:SetGoal(Instant(0))
-                            self.SubTabs[Idx].TransparencyMotor:SetGoal(Instant(0))
-                        end
-                    end
-                end
-
-                OldContainer.Visible = true
-                OldContainer.Position = UDim2.fromOffset(0, 0)
-                OldContainer.GroupTransparency = 0
-
-                OldSubTab.XMotor:SetGoal(Instant(0))
-                OldSubTab.TransparencyMotor:SetGoal(Instant(0))
-
-                NewContainer.Visible = true
-                NewContainer.Position = UDim2.fromOffset(Direction * SlideDistance, 0)
-                NewContainer.GroupTransparency = 1
-
-                NewSubTab.XMotor:SetGoal(Instant(Direction * SlideDistance))
-                NewSubTab.TransparencyMotor:SetGoal(Instant(1))
-
-                OldSubTab.XMotor:SetGoal(Spring(-Direction * SlideDistance, { frequency = 4, dampingRatio = 0.7 }))
-                OldSubTab.TransparencyMotor:SetGoal(Spring(1, { frequency = 4, dampingRatio = 0.7 }))
-
-                NewSubTab.XMotor:SetGoal(Spring(0, { frequency = 4, dampingRatio = 0.7 }))
-                NewSubTab.TransparencyMotor:SetGoal(Spring(0, { frequency = 4, dampingRatio = 0.7 }))
-
-                task.spawn(function()
-                    if self.SelectedSubTab == SubTabIndex and self.SubTabs[PreviousSubTab] then
-                        local OldContainer2 = self.SubTabs[PreviousSubTab].ContainerAnim
-                        local OldSubTab2 = self.SubTabs[PreviousSubTab]
-
-                        if OldContainer2 and OldContainer2.Parent then
-                            OldContainer2.Visible = false
-                            OldContainer2.Position = UDim2.fromOffset(0, 0)
-                            OldContainer2.GroupTransparency = 0
-                        end
-
-                        if OldSubTab2 and OldSubTab2.XMotor and OldSubTab2.TransparencyMotor then
-                            OldSubTab2.XMotor:SetGoal(Instant(0))
-                            OldSubTab2.TransparencyMotor:SetGoal(Instant(0))
-                        end
-                    end
-                end)
-            else
-                for Idx, Container in self.SubTabContainers do
-                    if Container then
-                        Container.Visible = (Idx == SubTabIndex)
-                        Container.Position = UDim2.fromOffset(0, 0)
-                        Container.GroupTransparency = 0
-
-                        if self.SubTabs[Idx] and self.SubTabs[Idx].XMotor and self.SubTabs[Idx].TransparencyMotor then
-                            self.SubTabs[Idx].XMotor:SetGoal(Instant(0))
-                            self.SubTabs[Idx].TransparencyMotor:SetGoal(Instant(0))
-                        end
-                    end
+            for Idx, Container in self.SubTabContainers do
+                if Container then
+                    Container.Visible = (Idx == SubTabIndex)
+                    Container.Position = UDim2.fromOffset(0, 0)
                 end
             end
         end
@@ -1697,11 +1114,14 @@ Components.Tab = (function()
                 return self.SubTabs[self.SelectedSubTab]:AddSection(SectionTitle, SectionIcon)
             end
 
+            self.SectionCounter = (self.SectionCounter or 0) + 1
+
             local Section = { Type = "Section" }
-            local SectionFrame = Components.Section(SectionTitle, Tab.Container, SectionIcon)
+            local SectionFrame = Components.Section(SectionTitle, Tab.Container, SectionIcon, self.SectionCounter)
 
             Section.Container = SectionFrame.Container
             Section.ScrollFrame = Tab.Container
+            Section.ElementLayoutCounter = SectionFrame.ElementLayoutCounter
 
             if Library.AttachElementMethods then
                 Library.AttachElementMethods(Section)
@@ -1722,124 +1142,19 @@ Components.Tab = (function()
             return
         end
 
-        if TabModule.AnimationTask then
-            task.cancel(TabModule.AnimationTask)
-            TabModule.AnimationTask = nil
-        end
-
         local Window = TabModule.Window
-        local PreviousTab = TabModule.SelectedTab
-        local Direction = (PreviousTab > 0 and Tab > PreviousTab) and 1 or -1
-
-        if PreviousTab == 0 then
-            Direction = 0
-        end
-
-        local ContainerSize = Window.ContainerHolder and Window.ContainerHolder.AbsoluteSize.X or 500
-        local SlideDistance = math.min(ContainerSize * 0.15, 60)
 
         TabModule.SelectedTab = Tab
-        TabModule.CurrentAnimationTab = Tab
 
-        for _, TabObject in TabModule.Tabs do
-            TabObject.SetTransparency(0.92)
-            TabObject.Selected = false
+        for Idx, TabObject in TabModule.Tabs do
+            TabObject.Selected = (Idx == Tab)
+            TabObject.Frame.BackgroundTransparency = (Idx == Tab) and 0.89 or 0.92
+            TabObject.ContainerAnim.Visible = (Idx == Tab)
+            TabObject.ContainerAnim.Position = UDim2.fromOffset(0, 0)
         end
 
-        TabModule.Tabs[Tab].SetTransparency(0.89)
-        TabModule.Tabs[Tab].Selected = true
-
-        Window.SelectorPosMotor:SetGoal(Spring(TabModule:GetCurrentTabPos(), { frequency = 6 }))
-
-        if PreviousTab > 0 and PreviousTab ~= Tab and TabModule.Tabs[PreviousTab] and TabModule.Tabs[Tab] then
-            local OldContainer = TabModule.Tabs[PreviousTab].ContainerAnim
-            local NewContainer = TabModule.Tabs[Tab].ContainerAnim
-            local OldTab = TabModule.Tabs[PreviousTab]
-            local NewTab = TabModule.Tabs[Tab]
-
-            if not OldContainer
-                or not NewContainer
-                or not OldTab.ContainerXMotor
-                or not OldTab.ContainerTransparencyMotor
-                or not NewTab.ContainerXMotor
-                or not NewTab.ContainerTransparencyMotor
-            then
-                for Idx, Container in TabModule.Containers do
-                    if Container then
-                        Container.Visible = (Idx == Tab)
-                        Container.Position = UDim2.fromOffset(0, 0)
-                        Container.GroupTransparency = 0
-                    end
-                end
-
-                return
-            end
-
-            for Idx, Container in TabModule.Containers do
-                if Container and Idx ~= PreviousTab and Idx ~= Tab then
-                    Container.Visible = false
-                    Container.Position = UDim2.fromOffset(0, 0)
-                    Container.GroupTransparency = 0
-
-                    if TabModule.Tabs[Idx] and TabModule.Tabs[Idx].ContainerXMotor and TabModule.Tabs[Idx].ContainerTransparencyMotor then
-                        TabModule.Tabs[Idx].ContainerXMotor:SetGoal(Instant(0))
-                        TabModule.Tabs[Idx].ContainerTransparencyMotor:SetGoal(Instant(0))
-                    end
-                end
-            end
-
-            OldContainer.Visible = true
-            OldContainer.Position = UDim2.fromOffset(0, 0)
-            OldContainer.GroupTransparency = 0
-
-            OldTab.ContainerXMotor:SetGoal(Instant(0))
-            OldTab.ContainerTransparencyMotor:SetGoal(Instant(0))
-
-            NewContainer.Visible = true
-            NewContainer.Position = UDim2.fromOffset(Direction * SlideDistance, 0)
-            NewContainer.GroupTransparency = 1
-
-            NewTab.ContainerXMotor:SetGoal(Instant(Direction * SlideDistance))
-            NewTab.ContainerTransparencyMotor:SetGoal(Instant(1))
-
-            OldTab.ContainerXMotor:SetGoal(Spring(-Direction * SlideDistance, { frequency = 4, dampingRatio = 0.7 }))
-            OldTab.ContainerTransparencyMotor:SetGoal(Spring(1, { frequency = 4, dampingRatio = 0.7 }))
-
-            NewTab.ContainerXMotor:SetGoal(Spring(0, { frequency = 4, dampingRatio = 0.7 }))
-            NewTab.ContainerTransparencyMotor:SetGoal(Spring(0, { frequency = 4, dampingRatio = 0.7 }))
-
-            TabModule.AnimationTask = task.spawn(function()
-                if TabModule.CurrentAnimationTab == Tab and TabModule.Tabs[PreviousTab] then
-                    local OldContainer2 = TabModule.Tabs[PreviousTab].ContainerAnim
-                    local OldTab2 = TabModule.Tabs[PreviousTab]
-
-                    if OldContainer2 and OldContainer2.Parent then
-                        OldContainer2.Visible = false
-                        OldContainer2.Position = UDim2.fromOffset(0, 0)
-                        OldContainer2.GroupTransparency = 0
-                    end
-
-                    if OldTab2 and OldTab2.ContainerXMotor and OldTab2.ContainerTransparencyMotor then
-                        OldTab2.ContainerXMotor:SetGoal(Instant(0))
-                        OldTab2.ContainerTransparencyMotor:SetGoal(Instant(0))
-                    end
-
-                    TabModule.AnimationTask = nil
-                end
-            end)
-        else
-            for Idx, Container in TabModule.Containers do
-                if Container then
-                    Container.Visible = (Idx == Tab)
-                    Container.Position = UDim2.fromOffset(0, 0)
-                    Container.GroupTransparency = 0
-
-                    if TabModule.Tabs[Idx] and TabModule.Tabs[Idx].ContainerXMotor and TabModule.Tabs[Idx].ContainerTransparencyMotor then
-                        TabModule.Tabs[Idx].ContainerXMotor:SetGoal(Instant(0))
-                        TabModule.Tabs[Idx].ContainerTransparencyMotor:SetGoal(Instant(0))
-                    end
-                end
-            end
+        if Window.Selector then
+            Window.Selector.Position = UDim2.new(0, 0, 0, Window.TabHolderTop + TabModule:GetCurrentTabPos() + 16)
         end
     end
 
@@ -1847,8 +1162,6 @@ Components.Tab = (function()
 end)()
 
 Components.Button = (function()
-    local Spring = Flipper.Spring.New
-
     return function(Theme, Parent, DialogCheck)
         DialogCheck = DialogCheck or false
 
@@ -1903,22 +1216,20 @@ Components.Button = (function()
             Button.Title,
         })
 
-        local Motor, SetTransparency = Creator.SpringMotor(1, Button.HoverFrame, "BackgroundTransparency", DialogCheck)
-
         Creator.AddSignal(Button.Frame.MouseEnter, function()
-            SetTransparency(0.97)
+            Button.HoverFrame.BackgroundTransparency = 0.97
         end)
 
         Creator.AddSignal(Button.Frame.MouseLeave, function()
-            SetTransparency(1)
+            Button.HoverFrame.BackgroundTransparency = 1
         end)
 
         Creator.AddSignal(Button.Frame.MouseButton1Down, function()
-            SetTransparency(1)
+            Button.HoverFrame.BackgroundTransparency = 1
         end)
 
         Creator.AddSignal(Button.Frame.MouseButton1Up, function()
-            SetTransparency(0.97)
+            Button.HoverFrame.BackgroundTransparency = 0.97
         end)
 
         return Button
@@ -1926,8 +1237,6 @@ Components.Button = (function()
 end)()
 
 Components.Dialog = (function()
-    local Spring = Flipper.Spring.New
-
     local Dialog = {
         Window = nil,
     }
@@ -1954,8 +1263,6 @@ Components.Dialog = (function()
                 CornerRadius = UDim.new(0, 8),
             }),
         })
-
-        local TintMotor, TintTransparency = Creator.SpringMotor(1, NewDialog.TintFrame, "BackgroundTransparency", true)
 
         NewDialog.ButtonHolder = New("Frame", {
             Size = UDim2.new(1, -40, 1, -40),
@@ -2006,17 +1313,11 @@ Components.Dialog = (function()
             },
         })
 
-        NewDialog.Scale = New("UIScale", {
-            Scale = 1,
-        })
-
-        local ScaleMotor, Scale = Creator.SpringMotor(1.1, NewDialog.Scale, "Scale")
-
-        NewDialog.Root = New("CanvasGroup", {
+        NewDialog.Root = New("Frame", {
             Size = UDim2.fromOffset(300, 165),
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.fromScale(0.5, 0.5),
-            GroupTransparency = 1,
+            BackgroundTransparency = 0,
             Parent = NewDialog.TintFrame,
             ThemeTag = {
                 BackgroundColor3 = "Dialog",
@@ -2031,29 +1332,19 @@ Components.Dialog = (function()
                     Color = "DialogBorder",
                 },
             }),
-            NewDialog.Scale,
             NewDialog.Title,
             NewDialog.ButtonHolderFrame,
         })
 
-        local RootMotor, RootTransparency = Creator.SpringMotor(1, NewDialog.Root, "GroupTransparency")
-
         function NewDialog:Open()
             Library.DialogOpen = true
 
-            NewDialog.Scale.Scale = 1.1
-
-            TintTransparency(0.75)
-            RootTransparency(0)
-            Scale(1)
+            NewDialog.TintFrame.BackgroundTransparency = 0.75
+            NewDialog.Root.BackgroundTransparency = 0
         end
 
         function NewDialog:Close()
             Library.DialogOpen = false
-
-            TintTransparency(1)
-            RootTransparency(1)
-            Scale(1.1)
 
             NewDialog.Root.UIStroke:Destroy()
             NewDialog.TintFrame:Destroy()
@@ -2092,8 +1383,6 @@ Components.Dialog = (function()
 end)()
 
 Components.Notification = (function()
-    local Spring = Flipper.Spring.New
-
     local Notification = {}
 
     function Notification:Init(Gui)
@@ -2207,7 +1496,7 @@ Components.Notification = (function()
         NewNotification.Root = New("Frame", {
             BackgroundTransparency = 0,
             Size = UDim2.new(1, 0, 1, 0),
-            Position = UDim2.fromScale(1, 0),
+            Position = UDim2.fromScale(0, 0),
             ThemeTag = { BackgroundColor3 = "Dialog" },
         }, {
             New("UICorner", { CornerRadius = UDim.new(0, 8) }),
@@ -2237,12 +1526,6 @@ Components.Notification = (function()
             NewNotification.Root,
         })
 
-        local RootMotor = Flipper.GroupMotor.New({ Scale = 1, Offset = 60 })
-
-        RootMotor:OnStep(function(Values)
-            NewNotification.Root.Position = UDim2.new(Values.Scale, Values.Offset, 0, 0)
-        end)
-
         Creator.AddSignal(NewNotification.CloseButton.MouseButton1Click, function()
             NewNotification:Close()
         end)
@@ -2251,11 +1534,6 @@ Components.Notification = (function()
             local ContentSize = NewNotification.LabelHolder.AbsoluteSize.Y
 
             NewNotification.Holder.Size = UDim2.new(1, 0, 0, 58 + ContentSize)
-
-            RootMotor:SetGoal({
-                Scale = Spring(0, { frequency = 5 }),
-                Offset = Spring(0, { frequency = 5 }),
-            })
         end
 
         function NewNotification:Close()
@@ -2269,14 +1547,7 @@ Components.Notification = (function()
                     end
                 end
 
-                task.spawn(function()
-                    RootMotor:SetGoal({
-                        Scale = Spring(1, { frequency = 5 }),
-                        Offset = Spring(60, { frequency = 5 }),
-                    })
-
-                    NewNotification.Holder:Destroy()
-                end)
+                NewNotification.Holder:Destroy()
             end
         end
 
@@ -2330,7 +1601,7 @@ Components.Textbox = (function()
             Size = UDim2.new(1, -4, 0, 1),
             Position = UDim2.new(0, 2, 1, 0),
             AnchorPoint = Vector2.new(0, 1),
-            BackgroundTransparency = 0,
+            BackgroundTransparency = 0.5,
             ThemeTag = { BackgroundColor3 = "DialogInputLine" },
         })
 
@@ -2498,13 +1769,9 @@ Components.TitleBar = (function()
 end)()
 
 Components.Window = (function()
-    local Spring = Flipper.Spring.New
-    local Instant = Flipper.Instant.New
-
     return function(Config)
         local Window = {
             Minimized = false,
-            Maximized = false,
             Size = Config.Size,
             CurrentPos = 0,
             TabWidth = 0,
@@ -2514,7 +1781,6 @@ Components.Window = (function()
         Library.Window = Window
 
         local Dragging, DragInput, MousePos, StartPos = false, nil, nil, nil
-        local Resizing, ResizePos = false, nil
         local MinimizeNotif = false
 
         Window.AcrylicPaint = {
@@ -2550,7 +1816,7 @@ Components.Window = (function()
         Window.TabWidth = Config.TabWidth
 
         local Selector = New("Frame", {
-            Size = UDim2.fromOffset(4, 0),
+            Size = UDim2.fromOffset(4, 16),
             BackgroundColor3 = Color3.fromRGB(76, 194, 255),
             Position = UDim2.fromOffset(0, 45),
             AnchorPoint = Vector2.new(0, 0.5),
@@ -2560,231 +1826,72 @@ Components.Window = (function()
             New("UICorner", { CornerRadius = UDim.new(0, 9) }),
         })
 
-        local ResizeStartFrame = New("Frame", {
-            Size = UDim2.fromOffset(20, 20),
-            BackgroundTransparency = 1,
-            Position = UDim2.new(1, -20, 1, -2),
-        })
-
-        local SearchElements = {}
         local AllElements = {}
 
-        local function NormalizeText(Text)
-            if not Text then
-                return ""
-            end
+        local ImageAsset = Config.Image
+        local HasImage = ImageAsset and ImageAsset ~= nil
+        local ImageSize = Window.TabWidth - 24
+        local TopOffset = 0
 
-            Text = tostring(Text)
-            Text = string.gsub(Text, "^%s+", "")
-            Text = string.gsub(Text, "%s+$", "")
-            Text = string.gsub(Text, "%s+", " ")
+        local ImageFrame = HasImage and New("ImageLabel", {
+            Size = UDim2.new(0, ImageSize, 0, ImageSize),
+            Position = UDim2.new(0.5, 0, 0, TopOffset),
+            AnchorPoint = Vector2.new(0.5, 0),
+            BackgroundTransparency = 1,
+            Image = "",
+            ZIndex = 5,
+            Visible = true,
+        }, {
+            New("UICorner", { CornerRadius = UDim.new(0, 6) }),
+        }) or nil
 
-            return string.lower(Text)
+        if HasImage then
+            Library:ApplyIcon(ImageFrame, ImageAsset)
         end
 
-        local function GetElementValues(ElementFrame)
-            local Values = {}
+        Window.HasImage = HasImage
+        Window.ImageFrame = ImageFrame
+        Window.ImageSize = ImageSize
+        Window.TopOffset = TopOffset
 
-            local function AddText(Text)
-                if Text and Text ~= "" then
-                    table.insert(Values, tostring(Text))
-                end
-            end
+        local ImageDivider
 
-            local function FindTextInDescendants(Obj)
-                if Obj:IsA("TextLabel") or Obj:IsA("TextButton") or Obj:IsA("TextBox") then
-                    AddText(Obj.Text)
-                end
-
-                for _, Child in Obj:GetChildren() do
-                    FindTextInDescendants(Child)
-                end
-            end
-
-            FindTextInDescendants(ElementFrame)
-
-            return Values
+        if HasImage then
+            ImageDivider = New("Frame", {
+                BackgroundTransparency = 0.5,
+                Size = UDim2.new(1, 0, 0, 1),
+                Position = UDim2.new(0, 0, 0, ImageSize + 10),
+                ZIndex = 10,
+                Parent = TabFrame,
+                ThemeTag = { BackgroundColor3 = "TitleBarLine" },
+            })
         end
 
-        local function CheckMatch(Text, Query)
-            if Query == "" then
-                return true
-            end
+        local TabHolderTop
 
-            local NormalizedText = NormalizeText(Text)
-
-            if NormalizedText == "" then
-                return false
-            end
-
-            local QueryLower = NormalizeText(Query)
-
-            if QueryLower == "" then
-                return true
-            end
-
-            if string.find(QueryLower, "%s", 1) then
-                local Words = {}
-
-                for Word in string.gmatch(QueryLower, "%S+") do
-                    if #Word > 0 then
-                        table.insert(Words, Word)
-                    end
-                end
-
-                if #Words == 0 then
-                    return true
-                end
-
-                for _, Word in Words do
-                    if not string.find(NormalizedText, Word, 1, true) then
-                        return false
-                    end
-                end
-
-                return true
-            else
-                return string.find(NormalizedText, QueryLower, 1, true) ~= nil
-            end
+        if HasImage then
+            TabHolderTop = ImageSize + 10 + TopOffset + 6
+        else
+            TabHolderTop = TopOffset + 6
         end
 
-        local function UpdateElementVisibility(SearchTerm)
-            if not SearchTerm then
-                SearchTerm = ""
-            end
+        Window.TabHolderTop = TabHolderTop
 
-            local NormalizedQuery = NormalizeText(SearchTerm)
-            local MatchedSectionFrames = {}
-            local ElementsInMatchedSections = {}
-
-            for Element, Data in AllElements do
-                if Element and Element.Parent then
-                    if Data.type == "Section" then
-                        local Title = tostring(Data.title or "")
-
-                        if NormalizedQuery ~= "" and CheckMatch(Title, NormalizedQuery) then
-                            MatchedSectionFrames[Element] = true
-
-                            if Element:FindFirstChild("Container") then
-                                local Container = Element:FindFirstChild("Container")
-
-                                for _, Child in Container:GetChildren() do
-                                    if not Child:IsA("UIListLayout") and not Child:IsA("UIPadding") then
-                                        ElementsInMatchedSections[Child] = true
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-
-            for Element, Data in AllElements do
-                if Element and Element.Parent then
-                    if NormalizedQuery == "" then
-                        Element.Visible = true
-                    else
-                        local Title = tostring(Data.title or "")
-                        local Desc = tostring(Data.description or "")
-                        local MatchesTitle = CheckMatch(Title, NormalizedQuery)
-                        local MatchesDesc = CheckMatch(Desc, NormalizedQuery)
-                        local MatchesValues = false
-                        local ElementValues = GetElementValues(Element)
-
-                        for _, Value in ElementValues do
-                            if CheckMatch(Value, NormalizedQuery) then
-                                MatchesValues = true
-                                break
-                            end
-                        end
-
-                        local MatchesSection = ElementsInMatchedSections[Element] == true
-
-                        if not MatchesSection and Data.section then
-                            for SectionFrame in MatchedSectionFrames do
-                                if Data.section == SectionFrame then
-                                    MatchesSection = true
-                                    break
-                                end
-                            end
-                        end
-
-                        Element.Visible = MatchesTitle or MatchesDesc or MatchesValues or MatchesSection
-                    end
-                end
-            end
-
-            task.spawn(function()
-                if not Window or not Window.ContainerHolder then
-                    return
-                end
-
-                for _, TabContainer in Window.ContainerHolder:GetChildren() do
-                    if TabContainer:IsA("ScrollingFrame") then
-                        local ContainerLayout = TabContainer:FindFirstChild("UIListLayout")
-
-                        if ContainerLayout then
-                            local ContainerPadding = TabContainer:FindFirstChild("UIPadding")
-                            local PaddingTop = ContainerPadding and ContainerPadding.PaddingTop.Offset or 1
-                            local PaddingBottom = ContainerPadding and ContainerPadding.PaddingBottom.Offset or 1
-                            local ContentSize = ContainerLayout.AbsoluteContentSize.Y + PaddingTop + PaddingBottom
-
-                            TabContainer.CanvasSize = UDim2.new(0, 0, 0, math.max(0, ContentSize))
-                        end
-
-                        for _, Section in TabContainer:GetChildren() do
-                            if Section:IsA("Frame") and Section.Name ~= "UIPadding" then
-                                local SectionContainer = Section:FindFirstChild("Container")
-
-                                if SectionContainer and SectionContainer:IsA("Frame") then
-                                    local ContainerLayout = SectionContainer:FindFirstChild("UIListLayout")
-
-                                    if ContainerLayout then
-                                        local HasVisibleChild = false
-
-                                        for _, Element in SectionContainer:GetChildren() do
-                                            if not Element:IsA("UIListLayout") and Element.Visible then
-                                                HasVisibleChild = true
-                                                break
-                                            end
-                                        end
-
-                                        if SearchTerm == "" or HasVisibleChild then
-                                            Section.Visible = true
-
-                                            local ContainerPadding = SectionContainer:FindFirstChild("UIPadding")
-                                            local ContainerPaddingTop = ContainerPadding and ContainerPadding.PaddingTop.Offset or 0
-                                            local ContainerPaddingBottom = ContainerPadding and ContainerPadding.PaddingBottom.Offset or 0
-                                            local ContainerContentSize = ContainerLayout.AbsoluteContentSize.Y
-                                                + ContainerPaddingTop
-                                                + ContainerPaddingBottom
-
-                                            SectionContainer.Size = UDim2.new(1, 0, 0, math.max(0, ContainerContentSize))
-                                        else
-                                            Section.Visible = false
-                                            SectionContainer.Size = UDim2.new(1, 0, 0, 0)
-                                        end
-                                    end
-                                end
-
-                                local SectionLayout = Section:FindFirstChild("UIListLayout")
-
-                                if SectionLayout then
-                                    local SectionPadding = Section:FindFirstChild("UIPadding")
-                                    local SectionPaddingTop = SectionPadding and SectionPadding.PaddingTop.Offset or 0
-                                    local SectionPaddingBottom = SectionPadding and SectionPadding.PaddingBottom.Offset or 0
-                                    local SectionContentSize = SectionLayout.AbsoluteContentSize.Y
-                                        + SectionPaddingTop
-                                        + SectionPaddingBottom
-
-                                    Section.Size = UDim2.new(1, 0, 0, math.max(0, SectionContentSize + 30))
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
+        Window.TabHolder = New("ScrollingFrame", {
+            Size = UDim2.new(1, 0, 1, -(TabHolderTop + 6)),
+            Position = UDim2.new(0, 0, 0, TabHolderTop),
+            BackgroundTransparency = 1,
+            ScrollBarImageTransparency = 1,
+            ScrollBarThickness = 0,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromScale(0, 0),
+            ScrollingDirection = Enum.ScrollingDirection.Y,
+        }, {
+            New("UIListLayout", {
+                Padding = UDim.new(0, 4),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+            }),
+        })
 
         local function RegisterElement(ElementFrame, Title, ElementType, Description)
             if ElementFrame then
@@ -2813,127 +1920,9 @@ Components.Window = (function()
             end
         end
 
-        local ImageAsset = Config.Image
-        local HasImage = ImageAsset and ImageAsset ~= nil
-        local ImageSize = Window.TabWidth - 24
-        local TopOffset = 0
-
-        local ImageFrame = HasImage and New("ImageLabel", {
-            Size = UDim2.new(0, ImageSize, 0, ImageSize),
-            Position = UDim2.new(0.5, 0, 0, TopOffset),
-            AnchorPoint = Vector2.new(0.5, 0),
-            BackgroundTransparency = 1,
-            Image = "",
-            ZIndex = 5,
-            Visible = true,
-        }, {
-            New("UICorner", { CornerRadius = UDim.new(0, 6) }),
-        }) or nil
-
-        if HasImage then
-            Library:ApplyIcon(ImageFrame, ImageAsset)
-        end
-
-        Window.HasImage = HasImage
-        Window.ImageFrame = ImageFrame
-        Window.ImageSize = ImageSize
-        Window.TopOffset = TopOffset
-
-        local SearchOffset = HasImage and (ImageSize + 10 + TopOffset) or TopOffset
-        local SearchHeight = 28
-
-        local TabHolderTop
-
-        if HasImage then
-            TabHolderTop = ImageSize + 10 + TopOffset + SearchHeight + 6
-        else
-            TabHolderTop = TopOffset + SearchHeight + 6
-        end
-
-        Window.TabHolderTop = TabHolderTop
-
-        Window.TabHolder = New("ScrollingFrame", {
-            Size = UDim2.new(1, 0, 1, -(TabHolderTop + 6)),
-            Position = UDim2.new(0, 0, 0, TabHolderTop),
-            BackgroundTransparency = 1,
-            ScrollBarImageTransparency = 1,
-            ScrollBarThickness = 0,
-            BorderSizePixel = 0,
-            CanvasSize = UDim2.fromScale(0, 0),
-            ScrollingDirection = Enum.ScrollingDirection.Y,
-        }, {
-            New("UIListLayout", {
-                Padding = UDim.new(0, 4),
-            }),
-        })
-
-        local SearchFrame = New("Frame", {
-            Size = UDim2.new(1, 0, 0, 28),
-            Position = UDim2.new(0, 0, 0, SearchOffset),
-            BackgroundTransparency = 0.7,
-            ZIndex = 10,
-            Visible = true,
-            BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-            ThemeTag = { BackgroundColor3 = "Element" },
-        }, {
-            New("UICorner", { CornerRadius = UDim.new(0, 4) }),
-        })
-
-        local SearchInput = New("TextBox", {
-            FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json"),
-            TextColor3 = Color3.fromRGB(200, 200, 200),
-            TextSize = 13,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            TextYAlignment = Enum.TextYAlignment.Center,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, -36, 1, 0),
-            Position = UDim2.new(0, 8, 0, 0),
-            PlaceholderText = "Search",
-            PlaceholderColor3 = Color3.fromRGB(120, 120, 120),
-            ClearTextOnFocus = false,
-            Text = "",
-            Parent = SearchFrame,
-            ThemeTag = { TextColor3 = "Text", PlaceholderColor3 = "SubText" },
-        })
-
-        local SearchIconLabel = New("ImageLabel", {
-            Size = UDim2.fromOffset(16, 16),
-            Position = UDim2.new(1, -13, 0.5, 0),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundTransparency = 1,
-            Parent = SearchFrame,
-            ImageTransparency = 0.3,
-            ThemeTag = { ImageColor3 = "SubText" },
-        })
-
-        Library:ApplyIcon(SearchIconLabel, "search")
-
-        Creator.AddSignal(SearchInput:GetPropertyChangedSignal("Text"), function()
-            UpdateElementVisibility(SearchInput.Text or "")
-        end)
-
-        Creator.AddSignal(SearchInput.Focused, function()
-            SearchInput.Text = ""
-        end)
-
-        Creator.AddSignal(UserInputService.InputBegan, function(Input, GameProcessed)
-            if GameProcessed then
-                return
-            end
-
-            if Input.KeyCode == Enum.KeyCode.Escape and SearchInput:IsFocused() then
-                SearchInput.Text = ""
-                SearchInput:ReleaseFocus()
-            end
-        end)
-
-        Window.SearchElements = SearchElements
         Window.AllElements = AllElements
         Window.RegisterElement = RegisterElement
-        Window.UpdateElementVisibility = UpdateElementVisibility
-
-        local ImageOffset = HasImage and (ImageSize + 10 + TopOffset) or TopOffset
-        local TotalOffset = SearchHeight + ImageOffset
+        Window.Selector = Selector
 
         local TabFrame = New("Frame", {
             Size = UDim2.new(0, Window.TabWidth, 1, -62),
@@ -2942,22 +1931,20 @@ Components.Window = (function()
             ClipsDescendants = true,
         }, {
             ImageFrame,
-            SearchFrame,
             Window.TabHolder,
             Selector,
         })
 
         Window.TabFrame = TabFrame
 
+        if ImageDivider then
+            ImageDivider.Parent = TabFrame
+        end
+
         Window.ContainerHolder = New("Frame", {
             Size = UDim2.fromScale(1, 1),
             BackgroundTransparency = 1,
             ClipsDescendants = true,
-        })
-
-        Window.ContainerAnim = New("CanvasGroup", {
-            Size = UDim2.fromScale(1, 1),
-            BackgroundTransparency = 1,
         })
 
         Window.ContainerCanvas = New("Frame", {
@@ -2966,7 +1953,6 @@ Components.Window = (function()
             BackgroundTransparency = 1,
             ClipsDescendants = true,
         }, {
-            Window.ContainerAnim,
             Window.ContainerHolder,
         })
 
@@ -2975,7 +1961,6 @@ Components.Window = (function()
         table.insert(RootChildren, Window.AcrylicPaint.Frame)
         table.insert(RootChildren, Window.ContainerCanvas)
         table.insert(RootChildren, TabFrame)
-        table.insert(RootChildren, ResizeStartFrame)
 
         Window.Root = New("Frame", {
             BackgroundTransparency = 1,
@@ -3000,16 +1985,7 @@ Components.Window = (function()
 
             Window.UserInfoHeight = UserInfoHeight
 
-            local UserInfoSection = New("Frame", {
-                Name = "UserInfoSection",
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, UserInfoHeight),
-                Position = UDim2.new(0, 0, 1, -(UserInfoHeight + 2)),
-                ZIndex = 15,
-                Parent = TabFrame,
-            })
-
-            New("Frame", {
+            local UserInfoDivider = New("Frame", {
                 Name = "UserInfoSeparator",
                 BackgroundTransparency = 0.5,
                 Size = UDim2.new(1, 0, 0, 1),
@@ -3017,6 +1993,15 @@ Components.Window = (function()
                 ZIndex = 15,
                 Parent = TabFrame,
                 ThemeTag = { BackgroundColor3 = "TitleBarLine" },
+            })
+
+            local UserInfoSection = New("Frame", {
+                Name = "UserInfoSection",
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, UserInfoHeight),
+                Position = UDim2.new(0, 0, 1, -(UserInfoHeight + 2)),
+                ZIndex = 15,
+                Parent = TabFrame,
             })
 
             local AvatarSize = 28
@@ -3080,149 +2065,11 @@ Components.Window = (function()
             Window.TabHolder.Size = UDim2.new(1, 0, 1, -(TabHolderTop + 6 + UserInfoHeight))
         end
 
-        local SizeMotor = Flipper.GroupMotor.New({
-            X = Window.Size.X.Offset,
-            Y = Window.Size.Y.Offset,
-        })
-
-        local PosMotor = Flipper.GroupMotor.New({
-            X = Window.Position.X.Offset,
-            Y = Window.Position.Y.Offset,
-        })
-
-        Window.SelectorPosMotor = Flipper.SingleMotor.New(17)
-        Window.SelectorSizeMotor = Flipper.SingleMotor.New(0)
-        Window.ContainerBackMotor = Flipper.SingleMotor.New(0)
-        Window.ContainerPosMotor = Flipper.SingleMotor.New(94)
-        Window.ContainerXMotor = Flipper.SingleMotor.New(0)
-
-        SizeMotor:OnStep(function(Values)
-            Window.Root.Size = UDim2.new(0, Values.X, 0, Values.Y)
-        end)
-
-        PosMotor:OnStep(function(Values)
-            Window.Root.Position = UDim2.new(0, Values.X, 0, Values.Y)
-        end)
-
-        local LastValue = 0
-        local LastTime = 0
-
-        Window.SelectorPosMotor:OnStep(function(Value)
-            local Base = Window.TabHolderTop or 45
-            local VerticalInset = 16
-            local SelectorY = Base + Value + VerticalInset
-
-            local SearchOffset = Window.HasImage and (Window.ImageSize + Window.TopOffset + 10) or Window.TopOffset
-            local SearchTop = SearchOffset
-            local SearchBottom = SearchTop + 28
-
-            if Window.HasImage and Window.ImageSize then
-                local ImageBottom = Window.ImageSize + Window.TopOffset + 10
-
-                if SelectorY < ImageBottom then
-                    Selector.Visible = false
-                    return
-                end
-            end
-
-            if SelectorY >= SearchTop and SelectorY <= SearchBottom then
-                Selector.Visible = false
-                return
-            end
-
-            if Window.UserInfoHeight and Window.TabFrame then
-                local TabFrameSize = Window.TabFrame.AbsoluteSize.Y
-                local UserInfoTop = TabFrameSize - Window.UserInfoHeight - 2
-                local UserInfoBottom = UserInfoTop + Window.UserInfoHeight
-
-                if SelectorY >= UserInfoTop and SelectorY <= UserInfoBottom then
-                    Selector.Visible = false
-                    return
-                end
-            end
-
-            Selector.Visible = true
-            Selector.Position = UDim2.new(0, 0, 0, SelectorY)
-
-            local Now = tick()
-            local DeltaTime = Now - LastTime
-
-            if LastValue ~= nil then
-                Window.SelectorSizeMotor:SetGoal(Spring((math.abs(Value - LastValue) / (DeltaTime * 60)) + 16))
-                LastValue = Value
-            end
-
-            LastTime = Now
-        end)
-
-        Window.SelectorSizeMotor:OnStep(function(Value)
-            Selector.Size = UDim2.new(0, 4, 0, Value)
-        end)
-
-        Window.ContainerBackMotor:OnStep(function(Value)
-            Window.ContainerAnim.GroupTransparency = Value
-        end)
-
-        local ContainerXValue = 0
-        local ContainerYValue = 94
-
-        local function UpdateContainerPosition()
-            if Window.ContainerAnim then
-                Window.ContainerAnim.Position = UDim2.fromOffset(ContainerXValue, ContainerYValue)
-            end
-        end
-
-        Window.ContainerPosMotor:OnStep(function(Value)
-            ContainerYValue = Value
-            UpdateContainerPosition()
-        end)
-
-        Window.ContainerXMotor:OnStep(function(Value)
-            ContainerXValue = Value
-            UpdateContainerPosition()
-        end)
-
-        local OldSizeX
-        local OldSizeY
-
-        Window.Maximize = function(Value, NoPos, NoSpring)
-            Window.Maximized = Value
-
-            if Value then
-                OldSizeX = Window.Size.X.Offset
-                OldSizeY = Window.Size.Y.Offset
-            end
-
-            local SizeX = Value and Camera.ViewportSize.X or OldSizeX
-            local SizeY = Value and Camera.ViewportSize.Y or OldSizeY
-
-            SizeMotor:SetGoal({
-                X = Flipper[NoSpring and "Instant" or "Spring"].New(SizeX, { frequency = 6 }),
-                Y = Flipper[NoSpring and "Instant" or "Spring"].New(SizeY, { frequency = 6 }),
-            })
-
-            Window.Size = UDim2.fromOffset(SizeX, SizeY)
-
-            if not NoPos then
-                PosMotor:SetGoal({
-                    X = Spring(Value and 0 or Window.Position.X.Offset, { frequency = 6 }),
-                    Y = Spring(Value and 0 or Window.Position.Y.Offset, { frequency = 6 }),
-                })
-            end
-        end
-
         Creator.AddSignal(Window.TitleBar.Frame.InputBegan, function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
                 MousePos = Input.Position
                 StartPos = Window.Root.Position
-
-                if Window.Maximized then
-                    StartPos = UDim2.fromOffset(
-                        Mouse.X - (Mouse.X * ((OldSizeX - 100) / Window.Root.AbsoluteSize.X)),
-                        Mouse.Y - (Mouse.Y * (OldSizeY / Window.Root.AbsoluteSize.Y))
-                    )
-                end
 
                 Input.Changed:Connect(function()
                     if Input.UserInputState == Enum.UserInputState.End then
@@ -3238,52 +2085,12 @@ Components.Window = (function()
             end
         end)
 
-        Creator.AddSignal(ResizeStartFrame.InputBegan, function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                Resizing = true
-                ResizePos = Input.Position
-            end
-        end)
-
         Creator.AddSignal(UserInputService.InputChanged, function(Input)
             if Input == DragInput and Dragging then
                 local Delta = Input.Position - MousePos
 
                 Window.Position = UDim2.fromOffset(StartPos.X.Offset + Delta.X, StartPos.Y.Offset + Delta.Y)
-
-                PosMotor:SetGoal({
-                    X = Instant(Window.Position.X.Offset),
-                    Y = Instant(Window.Position.Y.Offset),
-                })
-
-                if Window.Maximized then
-                    Window.Maximize(false, true, true)
-                end
-            end
-
-            if (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch)
-                and Resizing
-            then
-                local Delta = Input.Position - ResizePos
-                local StartSize = Window.Size
-                local TargetSize = Vector3.new(StartSize.X.Offset, StartSize.Y.Offset, 0)
-                    + Vector3.new(1, 1, 0) * Delta
-
-                local TargetSizeClamped =
-                    Vector2.new(math.clamp(TargetSize.X, 470, 2048), math.clamp(TargetSize.Y, 380, 2048))
-
-                SizeMotor:SetGoal({
-                    X = Flipper.Instant.New(TargetSizeClamped.X),
-                    Y = Flipper.Instant.New(TargetSizeClamped.Y),
-                })
-            end
-        end)
-
-        Creator.AddSignal(UserInputService.InputEnded, function(Input)
-            if Resizing == true or Input.UserInputType == Enum.UserInputType.Touch then
-                Resizing = false
-
-                Window.Size = UDim2.fromOffset(SizeMotor:GetValue().X, SizeMotor:GetValue().Y)
+                Window.Root.Position = Window.Position
             end
         end)
 
@@ -3420,10 +2227,9 @@ Components.Window = (function()
         end
 
         Creator.AddSignal(Window.TabHolder:GetPropertyChangedSignal("CanvasPosition"), function()
-            LastValue = TabModule:GetCurrentTabPos() + 16
-            LastTime = 0
-
-            Window.SelectorPosMotor:SetGoal(Instant(TabModule:GetCurrentTabPos()))
+            if TabModule.SelectedTab > 0 then
+                Selector.Position = UDim2.new(0, 0, 0, Window.TabHolderTop + TabModule:GetCurrentTabPos() + 16)
+            end
         end)
 
         return Window
@@ -3530,19 +2336,10 @@ ElementsTable.Toggle = (function()
             Creator.OverrideTag(ToggleBorder, { Color = Toggle.Value and "Accent" or "ToggleSlider" })
             Creator.OverrideTag(ToggleCircle, { ImageColor3 = Toggle.Value and "ToggleToggled" or "ToggleSlider" })
 
-            TweenService:Create(
-                ToggleCircle,
-                TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                { Position = UDim2.new(0, Toggle.Value and 19 or 2, 0.5, 0) }
-            ):Play()
-
-            TweenService:Create(
-                ToggleSlider,
-                TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                { BackgroundTransparency = Toggle.Value and 0 or 1 }
-            ):Play()
-
+            ToggleCircle.Position = UDim2.new(0, Toggle.Value and 19 or 2, 0.5, 0)
+            ToggleSlider.BackgroundTransparency = Toggle.Value and 0 or 1
             ToggleCircle.ImageTransparency = Toggle.Value and 0 or 0.5
+
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
 
             task.spawn(function()
@@ -3583,7 +2380,7 @@ ElementsTable.Dropdown = (function()
             Buttons = {},
             Opened = false,
             Type = "Dropdown",
-            Callback = Config.Callback or function() end,
+            Callback = Config.Callback or function(Value) end,
             Search = true,
             KeepSearch = Config.KeepSearch == true,
         }
@@ -3650,6 +2447,7 @@ ElementsTable.Dropdown = (function()
 
         local DropdownListLayout = New("UIListLayout", {
             Padding = UDim.new(0, 3),
+            SortOrder = Enum.SortOrder.LayoutOrder,
         })
 
         local DropdownScrollFrame = New("ScrollingFrame", {
@@ -3747,7 +2545,7 @@ ElementsTable.Dropdown = (function()
         Creator.AddSignal(SearchBox:GetPropertyChangedSignal("Text"), ApplyFilter)
 
         local DropdownHolderFrame = New("Frame", {
-            Size = UDim2.fromScale(1, 0.6),
+            Size = UDim2.fromScale(1, 1),
             ThemeTag = { BackgroundColor3 = "DropdownHolder" },
         }, {
             SearchBar,
@@ -3886,7 +2684,6 @@ ElementsTable.Dropdown = (function()
             local CanvasWidth = math.max(170, ListSizeX > 0 and (ListSizeX + 20) or 170)
 
             DropdownHolderCanvas.Size = UDim2.fromOffset(CanvasWidth, TargetHeight)
-            DropdownHolderFrame.Size = UDim2.fromScale(1, 1)
         end
 
         function RecalculateCanvasSize()
@@ -3987,30 +2784,15 @@ ElementsTable.Dropdown = (function()
             RecalculateListSize()
             RecalculateCanvasSize()
 
-            TweenService:Create(
-                DropdownHolderFrame,
-                TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-                { Size = UDim2.fromScale(1, 1) }
-            ):Play()
-
-            TweenService:Create(
-                DropdownIco,
-                TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-                { Rotation = 0 }
-            ):Play()
+            DropdownIco.Rotation = 0
         end
 
         function Dropdown:Close()
             Dropdown.Opened = false
 
-            DropdownHolderFrame.Size = UDim2.fromScale(1, 1)
             DropdownHolderCanvas.Visible = false
 
-            TweenService:Create(
-                DropdownIco,
-                TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-                { Rotation = 180 }
-            ):Play()
+            DropdownIco.Rotation = 180
 
             Dropdown:Display()
 
@@ -4075,14 +2857,15 @@ ElementsTable.Dropdown = (function()
                 end
             end
 
-            for _, Value in Values do
+            for ValueIndex, Value in Values do
                 local Table = {}
 
                 local ButtonSelector = New("Frame", {
-                    Size = UDim2.fromOffset(4, 14),
+                    Size = UDim2.fromOffset(4, 6),
                     BackgroundColor3 = Color3.fromRGB(76, 194, 255),
                     Position = UDim2.fromOffset(-1, 16),
                     AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundTransparency = 1,
                     ThemeTag = { BackgroundColor3 = "Accent" },
                 }, {
                     New("UICorner", { CornerRadius = UDim.new(0, 2) }),
@@ -4108,6 +2891,7 @@ ElementsTable.Dropdown = (function()
                     BackgroundTransparency = 1,
                     ZIndex = 23,
                     Text = "",
+                    LayoutOrder = ValueIndex,
                     Parent = DropdownScrollFrame,
                     ThemeTag = { BackgroundColor3 = "DropdownOption" },
                 }, {
@@ -4124,28 +2908,20 @@ ElementsTable.Dropdown = (function()
                     Selected = Dropdown.Value == Value
                 end
 
-                local BackMotor, SetBackTransparency = Creator.SpringMotor(1, Button, "BackgroundTransparency")
-                local SelMotor, SetSelTransparency = Creator.SpringMotor(1, ButtonSelector, "BackgroundTransparency")
-                local SelectorSizeMotor = Flipper.SingleMotor.New(6)
-
-                SelectorSizeMotor:OnStep(function(Value2)
-                    ButtonSelector.Size = UDim2.new(0, 4, 0, Value2)
-                end)
-
                 Creator.AddSignal(Button.MouseEnter, function()
-                    SetBackTransparency(Selected and 0.85 or 0.89)
+                    Button.BackgroundTransparency = Selected and 0.85 or 0.89
                 end)
 
                 Creator.AddSignal(Button.MouseLeave, function()
-                    SetBackTransparency(Selected and 0.89 or 1)
+                    Button.BackgroundTransparency = Selected and 0.89 or 1
                 end)
 
                 Creator.AddSignal(Button.MouseButton1Down, function()
-                    SetBackTransparency(0.92)
+                    Button.BackgroundTransparency = 0.92
                 end)
 
                 Creator.AddSignal(Button.MouseButton1Up, function()
-                    SetBackTransparency(Selected and 0.85 or 0.89)
+                    Button.BackgroundTransparency = Selected and 0.85 or 0.89
                 end)
 
                 function Table:UpdateButton()
@@ -4153,16 +2929,16 @@ ElementsTable.Dropdown = (function()
                         Selected = Dropdown.Value[Value]
 
                         if Selected then
-                            SetBackTransparency(0.89)
+                            Button.BackgroundTransparency = 0.89
                         end
                     else
                         Selected = Dropdown.Value == Value
 
-                        SetBackTransparency(Selected and 0.89 or 1)
+                        Button.BackgroundTransparency = Selected and 0.89 or 1
                     end
 
-                    SelectorSizeMotor:SetGoal(Flipper.Spring.New(Selected and 14 or 6, { frequency = 6 }))
-                    SetSelTransparency(Selected and 0 or 1)
+                    ButtonSelector.Size = UDim2.new(0, 4, 0, Selected and 14 or 6)
+                    ButtonSelector.BackgroundTransparency = Selected and 0 or 1
                 end
 
                 AddSignal(Button.Activated, function()
@@ -4444,38 +3220,11 @@ ElementsTable.Slider = (function()
 
         local IsHovering = false
         local InputVisible = false
-        local CurrentWidthTween = nil
 
         local function CalculateInputWidth(Text)
             local TextSize = TextService:GetTextSize(Text or "0", 12, Enum.Font.SourceSans, Vector2.new(1000, 14))
 
             return math.max(25, math.min(80, TextSize.X + 8))
-        end
-
-        local function UpdateInputWidth(Text, Animate)
-            if CurrentWidthTween then
-                CurrentWidthTween:Cancel()
-                CurrentWidthTween = nil
-            end
-
-            local TargetWidth = CalculateInputWidth(Text)
-            local CurrentWidth = SliderInput.Size.X.Offset
-
-            if Animate and math.abs(TargetWidth - CurrentWidth) > 0.5 then
-                CurrentWidthTween = TweenService:Create(
-                    SliderInput,
-                    TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-                    { Size = UDim2.new(0, TargetWidth, 0, 14) }
-                )
-
-                CurrentWidthTween:Play()
-
-                CurrentWidthTween.Completed:Connect(function()
-                    CurrentWidthTween = nil
-                end)
-            else
-                SliderInput.Size = UDim2.new(0, TargetWidth, 0, 14)
-            end
         end
 
         Creator.AddSignal(SliderFrame.Frame.MouseEnter, function()
@@ -4485,15 +3234,12 @@ ElementsTable.Slider = (function()
                 SliderDisplay.Visible = false
                 SliderInput.Text = tostring(Slider.Value)
 
-                UpdateInputWidth(tostring(Slider.Value), false)
+                SliderInput.Size = UDim2.new(0, CalculateInputWidth(tostring(Slider.Value)), 0, 14)
 
                 InputVisible = true
 
-                TweenService:Create(
-                    SliderInput,
-                    TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-                    { TextTransparency = 0, BackgroundTransparency = 1 }
-                ):Play()
+                SliderInput.TextTransparency = 0
+                SliderInput.BackgroundTransparency = 1
             end
         end)
 
@@ -4501,11 +3247,8 @@ ElementsTable.Slider = (function()
             IsHovering = false
 
             if not SliderInput:IsFocused() and InputVisible then
-                TweenService:Create(
-                    SliderInput,
-                    TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
-                    { TextTransparency = 1, BackgroundTransparency = 1 }
-                ):Play()
+                SliderInput.TextTransparency = 1
+                SliderInput.BackgroundTransparency = 1
 
                 SliderDisplay.Visible = true
                 InputVisible = false
@@ -4535,7 +3278,7 @@ ElementsTable.Slider = (function()
                 end
 
                 if InputVisible or SliderInput:IsFocused() then
-                    UpdateInputWidth(CleanText, true)
+                    SliderInput.Size = UDim2.new(0, CalculateInputWidth(CleanText), 0, 14)
                 end
             end
         end)
@@ -4547,16 +3290,12 @@ ElementsTable.Slider = (function()
                 Slider:SetValue(InputValue)
             else
                 SliderInput.Text = tostring(Slider.Value)
-
-                UpdateInputWidth(tostring(Slider.Value), true)
+                SliderInput.Size = UDim2.new(0, CalculateInputWidth(tostring(Slider.Value)), 0, 14)
             end
 
             if not IsHovering then
-                TweenService:Create(
-                    SliderInput,
-                    TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
-                    { TextTransparency = 1, BackgroundTransparency = 1 }
-                ):Play()
+                SliderInput.TextTransparency = 1
+                SliderInput.BackgroundTransparency = 1
 
                 SliderDisplay.Visible = true
                 InputVisible = false
@@ -4566,7 +3305,7 @@ ElementsTable.Slider = (function()
         Creator.AddSignal(SliderInput.Focused, function()
             SliderInput.Text = ""
 
-            UpdateInputWidth("", false)
+            SliderInput.Size = UDim2.new(0, CalculateInputWidth(""), 0, 14)
         end)
 
         Creator.AddSignal(SliderInput.InputBegan, function(Input)
@@ -4642,8 +3381,7 @@ ElementsTable.Slider = (function()
 
             if InputVisible or SliderInput:IsFocused() then
                 SliderInput.Text = tostring(self.Value)
-
-                UpdateInputWidth(tostring(self.Value), not SliderInput:IsFocused())
+                SliderInput.Size = UDim2.new(0, CalculateInputWidth(tostring(self.Value)), 0, 14)
             end
 
             if not InputVisible and not SliderInput:IsFocused() then
@@ -5259,7 +3997,7 @@ ElementsTable.Colorpicker = (function()
 
                         Display()
 
-                        RenderStepped:Wait()
+                        task.wait()
                     end
                 end
             end)
@@ -5277,7 +4015,7 @@ ElementsTable.Colorpicker = (function()
 
                         Display()
 
-                        RenderStepped:Wait()
+                        task.wait()
                     end
                 end
             end)
@@ -5294,7 +4032,7 @@ ElementsTable.Colorpicker = (function()
 
                             Display()
 
-                            RenderStepped:Wait()
+                            task.wait()
                         end
                     end
                 end)
@@ -5473,11 +4211,17 @@ local Elements = {}
 Elements.__index = Elements
 
 local function AttachElementMethods(Target)
+    Target.ElementLayoutCounter = Target.ElementLayoutCounter or 0
+
     for _, ElementComponent in ElementsTable do
         local MethodName = "Add" .. ElementComponent.__type
 
         if Target[MethodName] == nil then
             Target[MethodName] = function(self, Idx, Config)
+                Config = Config or {}
+                Config.LayoutOrder = (self.ElementLayoutCounter or 0) + 1
+                self.ElementLayoutCounter = Config.LayoutOrder
+
                 ElementComponent.Container = self.Container
                 ElementComponent.Type = self.Type
                 ElementComponent.ScrollFrame = self.ScrollFrame
@@ -5504,117 +4248,120 @@ end
 Library.AttachElementMethods = AttachElementMethods
 
 do
-	SaveManager.Folder = "Ssamachi"
-	SaveManager.Ignore = {}
-	SaveManager.Parser = {
-		Toggle = {
-			Save = function(Idx, Object)
-				return { Type = "Toggle", Idx = Idx, Value = Object.Value }
-			end,
-			Load = function(Idx, Data)
-				if SaveManager.Options[Idx] then
-					SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
-				end
-			end,
-		},
-		Slider = {
-			Save = function(Idx, Object)
-				return { Type = "Slider", Idx = Idx, Value = tostring(Object.Value) }
-			end,
-			Load = function(Idx, Data)
-				if SaveManager.Options[Idx] then
-					SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
-				end
-			end,
-		},
-		Dropdown = {
-			Save = function(Idx, Object)
-				return { Type = "Dropdown", Idx = Idx, Value = Object.Value, Multi = Object.Multi }
-			end,
-			Load = function(Idx, Data)
-				if SaveManager.Options[Idx] then
-					SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
-				end
-			end,
-		},
-		Colorpicker = {
-			Save = function(Idx, Object)
-				return { Type = "Colorpicker", Idx = Idx, Value = Object.Value:ToHex(), Transparency = Object.Transparency }
-			end,
-			Load = function(Idx, Data)
-				if SaveManager.Options[Idx] then
-					SaveManager.Options[Idx]:SetValueRGB(Color3.fromHex(Data.Value or Data.value), Data.Transparency or Data.transparency)
-				end
-			end,
-		},
-		Keybind = {
-			Save = function(Idx, Object)
-				return { Type = "Keybind", Idx = Idx, Mode = Object.Mode, Key = Object.Value }
-			end,
-			Load = function(Idx, Data)
-				if SaveManager.Options[Idx] then
-					SaveManager.Options[Idx]:SetValue(Data.Key or Data.key, Data.Mode or Data.mode)
-				end
-			end,
-		},
-		Input = {
-			Save = function(Idx, Object)
-				return { Type = "Input", Idx = Idx, Text = Object.Value }
-			end,
-			Load = function(Idx, Data)
-				if SaveManager.Options[Idx] and type(Data.Text or Data.text) == "string" then
-					SaveManager.Options[Idx]:SetValue(Data.Text or Data.text)
-				end
-			end,
-		},
-	}
+    SaveManager.Folder = "Ssamachi"
+    SaveManager.Ignore = {}
+    SaveManager.Parser = {
+        Toggle = {
+            Save = function(Idx, Object)
+                return { Type = "Toggle", Idx = Idx, Value = Object.Value }
+            end,
+            Load = function(Idx, Data)
+                if SaveManager.Options[Idx] then
+                    SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
+                end
+            end,
+        },
+        Slider = {
+            Save = function(Idx, Object)
+                return { Type = "Slider", Idx = Idx, Value = tostring(Object.Value) }
+            end,
+            Load = function(Idx, Data)
+                if SaveManager.Options[Idx] then
+                    SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
+                end
+            end,
+        },
+        Dropdown = {
+            Save = function(Idx, Object)
+                return { Type = "Dropdown", Idx = Idx, Value = Object.Value, Multi = Object.Multi }
+            end,
+            Load = function(Idx, Data)
+                if SaveManager.Options[Idx] then
+                    SaveManager.Options[Idx]:SetValue(Data.Value or Data.value)
+                end
+            end,
+        },
+        Colorpicker = {
+            Save = function(Idx, Object)
+                return { Type = "Colorpicker", Idx = Idx, Value = Object.Value:ToHex(), Transparency = Object.Transparency }
+            end,
+            Load = function(Idx, Data)
+                if SaveManager.Options[Idx] then
+                    SaveManager.Options[Idx]:SetValueRGB(Color3.fromHex(Data.Value or Data.value), Data.Transparency or Data.transparency)
+                end
+            end,
+        },
+        Keybind = {
+            Save = function(Idx, Object)
+                return { Type = "Keybind", Idx = Idx, Mode = Object.Mode, Key = Object.Value }
+            end,
+            Load = function(Idx, Data)
+                if SaveManager.Options[Idx] then
+                    SaveManager.Options[Idx]:SetValue(Data.Key or Data.key, Data.Mode or Data.mode)
+                end
+            end,
+        },
+        Input = {
+            Save = function(Idx, Object)
+                return { Type = "Input", Idx = Idx, Text = Object.Value }
+            end,
+            Load = function(Idx, Data)
+                if SaveManager.Options[Idx] and type(Data.Text or Data.text) == "string" then
+                    SaveManager.Options[Idx]:SetValue(Data.Text or Data.text)
+                end
+            end,
+        },
+    }
 
-	function SaveManager:SetIgnoreIndexes(List)
-		for _, Key in List do
-			self.Ignore[Key] = true
-		end
-	end
+    function SaveManager:SetIgnoreIndexes(List)
+        for _, Key in List do
+            self.Ignore[Key] = true
+        end
+    end
 
-	function SaveManager:Save(Name)
-		if not Name then
-			return false
-		end
-
-		local FullPath = self.Folder .. "/" .. Name .. ".json"
-		local Data = {
-			Objects = {}
-		}
-
-		for Idx, Option in SaveManager.Options do
-			if self.Parser[Option.Type] and not self.Ignore[Idx] then
-				table.insert(Data.Objects, self.Parser[Option.Type].Save(Idx, Option))
-			end
-		end
-
-		local Success, Encoded = pcall(HttpService.JSONEncode, HttpService, Data)
-
-		if not Success then
-			return false
-		end
-
-		writefile(FullPath, Encoded)
-		return true
-	end
-
-	function SaveManager:Load(Name)
+    function SaveManager:Save(Name)
         if not Name then
+            return false
+        end
+
+        local FullPath = self.Folder .. "/" .. Name .. ".json"
+        local Data = {
+            Objects = {}
+        }
+
+        for Idx, Option in SaveManager.Options do
+            if self.Parser[Option.Type] and not self.Ignore[Idx] then
+                table.insert(Data.Objects, self.Parser[Option.Type].Save(Idx, Option))
+            end
+        end
+
+        local Success, Encoded = pcall(HttpService.JSONEncode, HttpService, Data)
+
+        if not Success then
+            return false
+        end
+
+        writefile(FullPath, Encoded)
+        return true
+    end
+
+    function SaveManager:Load(Name)
+        if not Name then
+            Library.ConfigLoaded = true
             return false
         end
 
         local File = self.Folder .. "/" .. Name .. ".json"
 
         if not isfile(File) then
+            Library.ConfigLoaded = true
             return false
         end
 
         local Success, Decoded = pcall(HttpService.JSONDecode, HttpService, readfile(File))
 
         if not Success then
+            Library.ConfigLoaded = true
             return false
         end
 
@@ -5635,25 +4382,25 @@ do
         return true
     end
 
-	function SaveManager:BuildFolderTree()
-		local Paths = {
-			self.Folder,
-			self.Folder .. "/"
-		}
+    function SaveManager:BuildFolderTree()
+        local Paths = {
+            self.Folder,
+            self.Folder .. "/"
+        }
 
-		for _, Str in Paths do
-			if not isfolder(Str) then
-				makefolder(Str)
-			end
-		end
-	end
+        for _, Str in Paths do
+            if not isfolder(Str) then
+                makefolder(Str)
+            end
+        end
+    end
 
-	function SaveManager:SetLibrary(Lib)
-		self.Library = Lib
-		self.Options = Lib.Options
-	end
+    function SaveManager:SetLibrary(Lib)
+        self.Library = Lib
+        self.Options = Lib.Options
+    end
 
-	SaveManager:BuildFolderTree()
+    SaveManager:BuildFolderTree()
 end
 
 Library.SaveManager = SaveManager
