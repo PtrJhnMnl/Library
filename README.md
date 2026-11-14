@@ -1,3 +1,5 @@
+# Ssamachi UI Documentation
+
 ## Installation
 
 ```lua
@@ -7,6 +9,14 @@ local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJ
 ## API Reference
 
 ### `Ssamachi:CreateWindow(Config)`
+
+**Example**
+
+```lua
+local Window = Ssamachi:CreateWindow({ Title = "Ssamachi" })
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -22,13 +32,17 @@ local Ssamachi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PtrJ
 
 Returns: `Window`
 
-```lua
-local Window = Ssamachi:CreateWindow({ Title = "Ssamachi" })
-```
-
 ---
 
 ### `Window:AddTab(Config)`
+
+**Example**
+
+```lua
+local Tab = Window:AddTab({ Title = "Main" })
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -37,43 +51,33 @@ local Window = Ssamachi:CreateWindow({ Title = "Ssamachi" })
 
 Returns: `Tab`
 
+---
+
+### `Window:SelectTab(Index)`
+
+**Example**
+
 ```lua
-local Tab = Window:AddTab({ Title = "Main" })
+Window:SelectTab(1)
 ```
+
+**Parameter Table**
+
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Index` | number | `nil` | Yes |
 
 ---
 
 ### `Tab:AddSection(Title, Icon)`
 
-| Arg | Type | Default | Required |
-|---|---|---|---|
-| `Title` | string | `nil` | Yes |
-| `Icon` | string / number | `nil` | No |
-
-Returns: `Section`
+**Example**
 
 ```lua
 local Section = Tab:AddSection("General")
 ```
 
----
-
-### `Tab:AddSubTab(Title, Icon)`
-
-| Arg | Type | Default | Required |
-|---|---|---|---|
-| `Title` | string | `nil` | Yes |
-| `Icon` | string / number | `nil` | No |
-
-Returns: `SubTab`
-
-```lua
-local SubTab = Tab:AddSubTab("Sub")
-```
-
----
-
-### `SubTab:AddSection(Title, Icon)`
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -82,17 +86,35 @@ local SubTab = Tab:AddSubTab("Sub")
 
 Returns: `Section`
 
-```lua
-local SubSection = SubTab:AddSection("Sub General")
-```
-
 ---
 
 ### Elements
 
-All elements accept `(Idx, Config)` where `Idx` is a unique identifier used for saving/loading.
+All elements accept `(Idx, Config)` where `Idx` is a unique string identifier used for saving/loading. `Button` and `Paragraph` are the only elements that do not require an `Idx`.
+
+Shared element methods available where applicable:
+
+- `SetTitle(string)`
+- `SetDesc(string)`
+- `Visible(boolean)`
+- `Destroy()`
+
+---
 
 #### `Section:AddButton(Idx, Config)`
+
+**Example**
+
+```lua
+Section:AddButton("MyButton", {
+    Title = "Click Me",
+    Callback = function()
+        print("Clicked")
+    end
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -101,13 +123,26 @@ All elements accept `(Idx, Config)` where `Idx` is a unique identifier used for 
 | `Icon` | string / number | `nil` | No |
 | `Callback` | function | `function() end` | No |
 
-```lua
-Section:AddButton("Ssamachi", { Title = "Click Me" })
-```
+Returns: `Button`
+
+Note: Buttons are not saved or loaded by the config system.
 
 ---
 
 #### `Section:AddToggle(Idx, Config)`
+
+**Example**
+
+```lua
+Section:AddToggle("MyToggle", {
+    Title = "Toggle",
+    Callback = function(Value)
+        print("Toggle:", Value)
+    end
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -116,13 +151,33 @@ Section:AddButton("Ssamachi", { Title = "Click Me" })
 | `Default` | boolean | `false` | No |
 | `Callback` | function | `function(Value) end` | No |
 
-```lua
-Section:AddToggle("Ssamachi", { Title = "Toggle" })
-```
+Returns: `Toggle`
+
+Element methods:
+
+- `SetValue(boolean)`
+- `OnChanged(function)`
 
 ---
 
 #### `Section:AddSlider(Idx, Config)`
+
+**Example**
+
+```lua
+Section:AddSlider("MySlider", {
+    Title = "Slider",
+    Default = 50,
+    Min = 0,
+    Max = 100,
+    Rounding = 1,
+    Callback = function(Value)
+        print("Slider:", Value)
+    end
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -134,19 +189,30 @@ Section:AddToggle("Ssamachi", { Title = "Toggle" })
 | `Rounding` | number | `nil` | Yes |
 | `Callback` | function | `function(Value) end` | No |
 
-```lua
-Section:AddSlider("Ssamachi", {
-    Title = "Slider",
-    Default = 50,
-    Min = 0,
-    Max = 100,
-    Rounding = 1
-})
-```
+Returns: `Slider`
+
+Element methods:
+
+- `SetValue(number)`
+- `OnChanged(function)`
 
 ---
 
 #### `Section:AddDropdown(Idx, Config)`
+
+**Example**
+
+```lua
+Section:AddDropdown("MyDropdown", {
+    Title = "Dropdown",
+    Values = { "One", "Two", "Three" },
+    Callback = function(Value)
+        print("Dropdown:", Value)
+    end
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -159,16 +225,31 @@ Section:AddSlider("Ssamachi", {
 | `KeepSearch` | boolean | `false` | No |
 | `Callback` | function | `function(Value) end` | No |
 
-```lua
-Section:AddDropdown("Ssamachi", {
-    Title = "Dropdown",
-    Values = { "One", "Two", "Three" }
-})
-```
+Returns: `Dropdown`
+
+Element methods:
+
+- `SetValue(string / table)`
+- `SetValues(table)`
+- `OnChanged(function)`
 
 ---
 
 #### `Section:AddKeybind(Idx, Config)`
+
+**Example**
+
+```lua
+Section:AddKeybind("MyKeybind", {
+    Title = "Keybind",
+    Default = "E",
+    Callback = function(Value)
+        print("Keybind:", Value)
+    end
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -179,16 +260,32 @@ Section:AddDropdown("Ssamachi", {
 | `Callback` | function | `function(Value) end` | No |
 | `ChangedCallback` | function | `function(New) end` | No |
 
-```lua
-Section:AddKeybind("Ssamachi", {
-    Title = "Keybind",
-    Default = "E"
-})
-```
+Returns: `Keybind`
+
+Element methods:
+
+- `SetValue(string, string)`
+- `OnChanged(function)`
+- `OnClick(function)`
+- `GetState()`
 
 ---
 
 #### `Section:AddColorpicker(Idx, Config)`
+
+**Example**
+
+```lua
+Section:AddColorpicker("MyColor", {
+    Title = "Color",
+    Default = Color3.fromRGB(255, 0, 0),
+    Callback = function(Value)
+        print("Color:", Value)
+    end
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -198,16 +295,30 @@ Section:AddKeybind("Ssamachi", {
 | `Transparency` | number | `0` | No |
 | `Callback` | function | `function(Value) end` | No |
 
-```lua
-Section:AddColorpicker("Ssamachi", {
-    Title = "Color",
-    Default = Color3.fromRGB(255, 0, 0)
-})
-```
+Returns: `Colorpicker`
+
+Element methods:
+
+- `SetValue(table, number)`
+- `SetValueRGB(Color3, number)`
+- `OnChanged(function)`
 
 ---
 
 #### `Section:AddInput(Idx, Config)`
+
+**Example**
+
+```lua
+Section:AddInput("MyInput", {
+    Title = "Input",
+    Callback = function(Value)
+        print("Input:", Value)
+    end
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -220,13 +331,27 @@ Section:AddColorpicker("Ssamachi", {
 | `MaxLength` | number | `nil` | No |
 | `Callback` | function | `function(Value) end` | No |
 
-```lua
-Section:AddInput("Ssamachi", { Title = "Input" })
-```
+Returns: `Input`
+
+Element methods:
+
+- `SetValue(string)`
+- `OnChanged(function)`
 
 ---
 
 #### `Section:AddParagraph(Config)`
+
+**Example**
+
+```lua
+Section:AddParagraph({
+    Title = "Info",
+    Content = "This is a paragraph of text."
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -234,34 +359,64 @@ Section:AddInput("Ssamachi", { Title = "Input" })
 | `Content` | string | `""` | No |
 | `Icon` | string / number | `nil` | No |
 
-```lua
-Section:AddParagraph("Ssamachi", { Title = "Info" })
-```
+Returns: `Paragraph`
+
+Note: Paragraphs are not saved or loaded by the config system.
 
 ---
 
 ### `Window:Dialog(Config)`
+
+**Example**
+
+```lua
+Window:Dialog({
+    Title = "Dialog",
+    Content = "Description",
+    Buttons = {
+        {
+            Title = "Okay",
+            Line = 1,
+            Callback = function()
+
+            end
+        },
+        {
+            Title = "Cancel",
+            Line = 2
+        }
+    }
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
 | `Title` | string | `nil` | Yes |
 | `Content` | string | `nil` | Yes |
 | `Buttons` | table | `{}` | No |
+| `Buttons[].Title` | string | `nil` | Yes |
+| `Buttons[].Line` | number | `1` | No |
+| `Buttons[].Callback` | function | `function() end` | No |
 
-```lua
-Window:Dialog({
-    Title = "Confirm",
-    Content = "Are you sure?",
-    Buttons = {
-        { Title = "Yes", Callback = function() print("yes") end },
-        { Title = "No", Callback = function() print("no") end }
-    }
-})
-```
+Buttons sharing the same `Line` render side-by-side in one row. A single button on a line spans the full row width. Lines are sorted ascending.
 
 ---
 
 ### `Ssamachi:Notify(Config)`
+
+**Example**
+
+```lua
+Ssamachi:Notify({
+    Title = "Ssamachi",
+    Content = "Loaded successfully",
+    Duration = 5
+})
+```
+
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -270,27 +425,23 @@ Window:Dialog({
 | `SubContent` | string | `""` | No |
 | `Duration` | number | `nil` | No |
 
-```lua
-Ssamachi:Notify({ Title = "Ssamachi" })
-```
+Returns: `Notification`
+
+Notification methods:
+
+- `Close()`
 
 ---
 
 ### `Ssamachi:SaveConfiguration(Name)`
 
-| Arg | Type | Default | Required |
-|---|---|---|---|
-| `Name` | string | `Window.ConfigName` | No |
-
-Returns: `boolean`
+**Example**
 
 ```lua
 Ssamachi:SaveConfiguration()
 ```
 
----
-
-### `Ssamachi:LoadConfiguration(Name)`
+**Parameter Table**
 
 | Arg | Type | Default | Required |
 |---|---|---|---|
@@ -298,35 +449,49 @@ Ssamachi:SaveConfiguration()
 
 Returns: `boolean`
 
+---
+
+### `Ssamachi:LoadConfiguration(Name)`
+
+**Example**
+
 ```lua
 Ssamachi:LoadConfiguration()
 ```
 
----
+**Parameter Table**
 
-### Element Methods
+| Arg | Type | Default | Required |
+|---|---|---|---|
+| `Name` | string | `Window.ConfigName` | No |
 
-All created elements have access to the following shared methods where applicable:
-
-- `SetTitle(string)`
-- `SetDesc(string)`
-- `Visible(boolean)`
-- `Destroy()`
-
-Element-specific methods:
-
-- **Toggle**: `SetValue(boolean)`, `OnChanged(function)`
-- **Slider**: `SetValue(number)`, `OnChanged(function)`
-- **Dropdown**: `SetValue(string/table)`, `SetValues(table)`, `OnChanged(function)`
-- **Keybind**: `SetValue(string, string)`, `OnChanged(function)`, `OnClick(function)`, `GetState()`
-- **Colorpicker**: `SetValue(table, number)`, `SetValueRGB(Color3, number)`, `OnChanged(function)`
-- **Input**: `SetValue(string)`, `OnChanged(function)`
+Returns: `boolean`
 
 ---
 
 ### Element Ordering
 
-Elements are ordered strictly by creation order. Each `Add*` call assigns an incrementing `LayoutOrder` internally, so the visual order always matches the code order. The same applies to `AddSection`, `AddSubTab`, and `AddTab`.
+Elements are ordered strictly by creation order. Each `Add*` call assigns an incrementing `LayoutOrder` internally, so the visual order always matches the code order. The same applies to `AddSection` and `AddTab`.
+
+---
+
+### Config Persistence
+
+The following element types are saved and loaded automatically when a `ConfigName` is set:
+
+- `Toggle`
+- `Slider`
+- `Dropdown`
+- `Colorpicker`
+- `Keybind`
+- `Input`
+
+The following element types are **not** saved:
+
+- `Button`
+- `Paragraph`
+
+Config files are stored as JSON in the `Ssamachi` folder.
 
 ---
 
