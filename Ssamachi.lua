@@ -1,3 +1,5 @@
+--!nocheck
+
 local CloneRef = cloneref or function(Object)
     return Object
 end
@@ -825,295 +827,7 @@ Components.Tab = (function()
         Tab.Container = Tab.ContainerFrame
         Tab.ScrollFrame = Tab.Container
 
-        Tab.SubTabs = {}
-        Tab.SubTabContainers = {}
-        Tab.SelectedSubTab = 0
-        Tab.SubTabCount = 0
-        Tab.SubTabHolder = nil
-
-        function Tab:AddSubTab(SubTitle, SubIcon)
-            self.SubTabCount = self.SubTabCount + 1
-
-            local SubTabIndex = self.SubTabCount
-
-            if not self.SubTabHolder then
-                local SubTabListLayout = New("UIListLayout", {
-                    Padding = UDim.new(0, 6),
-                    FillDirection = Enum.FillDirection.Horizontal,
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                    VerticalAlignment = Enum.VerticalAlignment.Center,
-                })
-
-                self.SubTabHolder = New("ScrollingFrame", {
-                    Size = UDim2.new(1, -20, 0, 40),
-                    Position = UDim2.fromOffset(1, 8),
-                    BackgroundTransparency = 1,
-                    Parent = self.ContainerFrame,
-                    ScrollingDirection = Enum.ScrollingDirection.X,
-                    ScrollBarThickness = 0,
-                    ScrollBarImageTransparency = 1,
-                    ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255),
-                    CanvasSize = UDim2.fromScale(0, 1),
-                    BorderSizePixel = 0,
-                }, {
-                    SubTabListLayout,
-                    New("UIPadding", {
-                        PaddingLeft = UDim.new(0, 0),
-                        PaddingRight = UDim.new(0, 0),
-                        PaddingTop = UDim.new(0, 0),
-                        PaddingBottom = UDim.new(0, 0),
-                    }),
-                })
-
-                Creator.AddSignal(SubTabListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-                    self.SubTabHolder.CanvasSize = UDim2.new(0, SubTabListLayout.AbsoluteContentSize.X, 0, 40)
-                end)
-
-                local SubTabContainerHolder = New("Frame", {
-                    Size = UDim2.new(1, -11, 1, -56),
-                    Position = UDim2.fromOffset(1, 48),
-                    BackgroundTransparency = 1,
-                    ClipsDescendants = true,
-                    Parent = self.ContainerFrame,
-                })
-
-                self.SubTabContainerHolder = SubTabContainerHolder
-            end
-
-            local HasSubIcon = SubIcon ~= nil and SubIcon ~= ""
-
-            local SubTabIconLabel = HasSubIcon and New("ImageLabel", {
-                Size = UDim2.fromOffset(16, 16),
-                BackgroundTransparency = 1,
-                LayoutOrder = 1,
-                ThemeTag = {
-                    ImageColor3 = "Text",
-                },
-            }) or nil
-
-            if SubTabIconLabel then
-                Library:ApplyIcon(SubTabIconLabel, SubIcon)
-            end
-
-            local SubTabButton = New("TextButton", {
-                Size = UDim2.new(0, 0, 0, 32),
-                AutomaticSize = Enum.AutomaticSize.X,
-                BackgroundTransparency = 0.92,
-                Parent = self.SubTabHolder,
-                Text = "",
-                LayoutOrder = SubTabIndex,
-                ThemeTag = {
-                    BackgroundColor3 = "Tab",
-                },
-            }, {
-                New("UICorner", {
-                    CornerRadius = UDim.new(0, 6),
-                }),
-                New("UIStroke", {
-                    Transparency = 1,
-                    Thickness = 1,
-                    ThemeTag = {
-                        Color = "Accent",
-                    },
-                }),
-                New("UIListLayout", {
-                    Padding = UDim.new(0, 6),
-                    FillDirection = Enum.FillDirection.Horizontal,
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                    VerticalAlignment = Enum.VerticalAlignment.Center,
-                    HorizontalAlignment = Enum.HorizontalAlignment.Center,
-                }),
-                New("UIPadding", {
-                    PaddingLeft = UDim.new(0, 12),
-                    PaddingRight = UDim.new(0, 12),
-                    PaddingTop = UDim.new(0, 6),
-                    PaddingBottom = UDim.new(0, 6),
-                }),
-                SubTabIconLabel,
-                New("TextLabel", {
-                    Text = SubTitle,
-                    RichText = true,
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextTransparency = 0,
-                    FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
-                    TextSize = 12,
-                    TextXAlignment = "Left",
-                    TextYAlignment = "Center",
-                    Size = UDim2.new(0, 0, 1, 0),
-                    AutomaticSize = Enum.AutomaticSize.X,
-                    BackgroundTransparency = 1,
-                    LayoutOrder = 2,
-                    ThemeTag = {
-                        TextColor3 = "Text",
-                    },
-                }),
-            })
-
-            local SubTabContainerAnim = New("Frame", {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundTransparency = 1,
-                Parent = self.SubTabContainerHolder,
-                Visible = false,
-                Position = UDim2.fromOffset(0, 0),
-            })
-
-            local SubTabContainer = New("ScrollingFrame", {
-                Size = UDim2.fromScale(1, 1),
-                BackgroundTransparency = 1,
-                Parent = SubTabContainerAnim,
-                Visible = true,
-                BottomImage = "",
-                MidImage = "",
-                TopImage = "",
-                ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255),
-                ScrollBarImageTransparency = 0.95,
-                ScrollBarThickness = 3,
-                BorderSizePixel = 0,
-                CanvasSize = UDim2.fromScale(0, 0),
-                ScrollingDirection = Enum.ScrollingDirection.Y,
-                ScrollingEnabled = true,
-            }, {
-                New("UIListLayout", {
-                    Padding = UDim.new(0, 5),
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                }),
-                New("UIPadding", {
-                    PaddingRight = UDim.new(0, 10),
-                    PaddingLeft = UDim.new(0, 1),
-                    PaddingTop = UDim.new(0, 1),
-                    PaddingBottom = UDim.new(0, 1),
-                }),
-            })
-
-            local SubTabLayout = SubTabContainer:FindFirstChild("UIListLayout")
-
-            Creator.AddSignal(SubTabLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-                SubTabContainer.CanvasSize = UDim2.new(0, 0, 0, SubTabLayout.AbsoluteContentSize.Y + 2)
-            end)
-
-            local SubTabStroke = SubTabButton:FindFirstChild("UIStroke")
-
-            local function UpdateSubTabAppearance()
-                if self.SelectedSubTab == SubTabIndex then
-                    SubTabButton.BackgroundTransparency = 0.75
-
-                    if SubTabStroke then
-                        SubTabStroke.Transparency = 0
-                    end
-                else
-                    SubTabButton.BackgroundTransparency = 0.92
-
-                    if SubTabStroke then
-                        SubTabStroke.Transparency = 1
-                    end
-                end
-            end
-
-            Creator.AddSignal(SubTabButton.MouseEnter, function()
-                if self.SelectedSubTab ~= SubTabIndex then
-                    SubTabButton.BackgroundTransparency = 0.87
-                end
-            end)
-
-            Creator.AddSignal(SubTabButton.MouseLeave, function()
-                UpdateSubTabAppearance()
-            end)
-
-            Creator.AddSignal(SubTabButton.MouseButton1Down, function()
-                SubTabButton.BackgroundTransparency = 0.92
-            end)
-
-            Creator.AddSignal(SubTabButton.MouseButton1Up, function()
-                UpdateSubTabAppearance()
-            end)
-
-            UpdateSubTabAppearance()
-
-            Creator.AddSignal(SubTabButton.MouseButton1Click, function()
-                self:SelectSubTab(SubTabIndex)
-            end)
-
-            local SubTab = {
-                Type = "SubTab",
-                Name = SubTitle,
-                Button = SubTabButton,
-                Container = SubTabContainer,
-                ContainerAnim = SubTabContainerAnim,
-                Selected = false,
-                SectionCounter = 0,
-            }
-
-            self.SubTabs[SubTabIndex] = SubTab
-            self.SubTabContainers[SubTabIndex] = SubTabContainerAnim
-
-            if self.SubTabCount == 1 then
-                self:SelectSubTab(SubTabIndex)
-            end
-
-            function SubTab:AddSection(SectionTitle, SectionIcon)
-                self.SectionCounter = (self.SectionCounter or 0) + 1
-
-                local Section = { Type = "Section" }
-                local SectionFrame = Components.Section(SectionTitle, SubTab.Container, SectionIcon, self.SectionCounter)
-
-                Section.Container = SectionFrame.Container
-                Section.ScrollFrame = SubTab.Container
-                Section.ElementLayoutCounter = SectionFrame.ElementLayoutCounter
-
-                if Library.AttachElementMethods then
-                    Library.AttachElementMethods(Section)
-                end
-
-                return Section
-            end
-
-            if Library.AttachElementMethods then
-                Library.AttachElementMethods(SubTab)
-            end
-
-            return SubTab
-        end
-
-        function Tab:SelectSubTab(SubTabIndex)
-            if self.SelectedSubTab == SubTabIndex then
-                return
-            end
-
-            self.SelectedSubTab = SubTabIndex
-
-            for Idx, SubTabObj in self.SubTabs do
-                SubTabObj.Selected = (Idx == SubTabIndex)
-
-                local SubTabStroke = SubTabObj.Button:FindFirstChild("UIStroke")
-
-                if Idx == SubTabIndex then
-                    SubTabObj.Button.BackgroundTransparency = 0.75
-
-                    if SubTabStroke then
-                        SubTabStroke.Transparency = 0
-                    end
-                else
-                    SubTabObj.Button.BackgroundTransparency = 0.92
-
-                    if SubTabStroke then
-                        SubTabStroke.Transparency = 1
-                    end
-                end
-            end
-
-            for Idx, Container in self.SubTabContainers do
-                if Container then
-                    Container.Visible = (Idx == SubTabIndex)
-                    Container.Position = UDim2.fromOffset(0, 0)
-                end
-            end
-        end
-
         function Tab:AddSection(SectionTitle, SectionIcon)
-            if self.SelectedSubTab > 0 and self.SubTabs[self.SelectedSubTab] then
-                return self.SubTabs[self.SelectedSubTab]:AddSection(SectionTitle, SectionIcon)
-            end
-
             self.SectionCounter = (self.SectionCounter or 0) + 1
 
             local Section = { Type = "Section" }
@@ -1249,7 +963,8 @@ Components.Dialog = (function()
 
     function Dialog:Create()
         local NewDialog = {
-            Buttons = 0,
+            Buttons = {},
+            Lines = {},
         }
 
         NewDialog.TintFrame = New("TextButton", {
@@ -1271,8 +986,8 @@ Components.Dialog = (function()
             BackgroundTransparency = 1,
         }, {
             New("UIListLayout", {
-                Padding = UDim.new(0, 10),
-                FillDirection = Enum.FillDirection.Horizontal,
+                Padding = UDim.new(0, 8),
+                FillDirection = Enum.FillDirection.Vertical,
                 HorizontalAlignment = Enum.HorizontalAlignment.Center,
                 SortOrder = Enum.SortOrder.LayoutOrder,
             }),
@@ -1350,22 +1065,19 @@ Components.Dialog = (function()
             NewDialog.TintFrame:Destroy()
         end
 
-        function NewDialog:Button(Title, Callback)
-            NewDialog.Buttons = NewDialog.Buttons + 1
-
+        function NewDialog:AddButton(Title, Callback, Line)
             Title = Title or "Button"
             Callback = Callback or function() end
+            Line = Line or 1
 
-            local Button = Components.Button("", NewDialog.ButtonHolder, true)
+            NewDialog.Lines[Line] = NewDialog.Lines[Line] or {}
+
+            local Button = Components.Button("", nil, true)
 
             Button.Title.Text = Title
+            Button.Line = Line
 
-            for _, Btn in NewDialog.ButtonHolder:GetChildren() do
-                if Btn:IsA("TextButton") then
-                    Btn.Size =
-                        UDim2.new(1 / NewDialog.Buttons, -(((NewDialog.Buttons - 1) * 10) / NewDialog.Buttons), 0, 32)
-                end
-            end
+            table.insert(NewDialog.Lines[Line], Button)
 
             Creator.AddSignal(Button.Frame.MouseButton1Click, function()
                 Library:SafeCallback(Callback)
@@ -1374,6 +1086,53 @@ Components.Dialog = (function()
             end)
 
             return Button
+        end
+
+        function NewDialog:Layout()
+            local LineKeys = {}
+
+            for LineKey in NewDialog.Lines do
+                table.insert(LineKeys, LineKey)
+            end
+
+            table.sort(LineKeys)
+
+            for LineIdx, LineKey in LineKeys do
+                local Buttons = NewDialog.Lines[LineKey]
+
+                local LineFrame = New("Frame", {
+                    Size = UDim2.new(1, 0, 0, 32),
+                    BackgroundTransparency = 1,
+                    LayoutOrder = LineIdx,
+                }, {
+                    New("UIListLayout", {
+                        Padding = UDim.new(0, 10),
+                        FillDirection = Enum.FillDirection.Horizontal,
+                        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+                        SortOrder = Enum.SortOrder.LayoutOrder,
+                    }),
+                })
+
+                LineFrame.Parent = NewDialog.ButtonHolder
+
+                local Count = #Buttons
+                local WidthScale = (1 / Count) - (((Count - 1) * 10) / Count)
+
+                for ButtonIdx, Btn in Buttons do
+                    Btn.Frame.Parent = LineFrame
+                    Btn.Frame.LayoutOrder = ButtonIdx
+                    Btn.Frame.Size = UDim2.new(WidthScale, 0, 0, 32)
+                end
+            end
+
+            local LineCount = #LineKeys
+            local HolderHeight = (LineCount * 32) + ((LineCount - 1) * 8) + 24
+
+            NewDialog.ButtonHolderFrame.Size = UDim2.new(1, 0, 0, HolderHeight)
+            NewDialog.ButtonHolderFrame.Position = UDim2.new(0, 0, 1, -HolderHeight)
+
+            NewDialog.ButtonHolder.Size = UDim2.new(1, -40, 0, HolderHeight - 24)
+            NewDialog.ButtonHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
         end
 
         return NewDialog
@@ -2207,9 +1966,10 @@ Components.Window = (function()
             end)
 
             for _, ButtonConfig in DialogConfig.Buttons do
-                Dialog:Button(ButtonConfig.Title, ButtonConfig.Callback)
+                Dialog:AddButton(ButtonConfig.Title, ButtonConfig.Callback, ButtonConfig.Line)
             end
 
+            Dialog:Layout()
             Dialog:Open()
         end
 
@@ -4040,11 +3800,12 @@ ElementsTable.Colorpicker = (function()
 
             Display()
 
-            Dialog:Button("Done", function()
+            Dialog:AddButton("Done", function()
                 Colorpicker:SetValue({ Hue, Sat, Vib }, Transparency)
-            end)
+            end, 1)
 
-            Dialog:Button("Cancel")
+            Dialog:AddButton("Cancel", function() end, 1)
+            Dialog:Layout()
             Dialog:Open()
         end
 
@@ -4229,7 +3990,7 @@ local function AttachElementMethods(Target)
 
                 local CreatedElement = ElementComponent:New(Idx, Config)
 
-                if CreatedElement and CreatedElement.OnChanged and Library.ConfigName then
+                if CreatedElement and CreatedElement.OnChanged and Library.ConfigName and CreatedElement.Type ~= "Button" and CreatedElement.Type ~= "Paragraph" then
                     CreatedElement:OnChanged(function()
                         task.defer(function()
                             if Library.ConfigLoaded then
