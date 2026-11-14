@@ -1,5 +1,3 @@
-# Ssamachi UI Documentation
-
 ## Installation
 
 ```lua
@@ -101,12 +99,12 @@ Shared element methods available where applicable:
 
 ---
 
-#### `Section:AddButton(Idx, Config)`
+#### `Section:AddButton(Config)`
 
 **Example**
 
 ```lua
-Section:AddButton("MyButton", {
+Section:AddButton({
     Title = "Click Me",
     Callback = function()
         print("Clicked")
@@ -125,7 +123,7 @@ Section:AddButton("MyButton", {
 
 Returns: `Button`
 
-Note: Buttons are not saved or loaded by the config system.
+Note: Buttons are not saved or loaded by the config system and do not require an `Idx`.
 
 ---
 
@@ -371,20 +369,11 @@ Note: Paragraphs are not saved or loaded by the config system.
 
 ```lua
 Window:Dialog({
-    Title = "Dialog",
-    Content = "Description",
+    Title = "Confirm",
+    Content = "Are you sure?",
     Buttons = {
-        {
-            Title = "Okay",
-            Line = 1,
-            Callback = function()
-
-            end
-        },
-        {
-            Title = "Cancel",
-            Line = 2
-        }
+        { Title = "Yes", Callback = function() print("yes") end },
+        { Title = "No", Callback = function() print("no") end }
     }
 })
 ```
@@ -411,8 +400,7 @@ Buttons sharing the same `Line` render side-by-side in one row. A single button 
 ```lua
 Ssamachi:Notify({
     Title = "Ssamachi",
-    Content = "Loaded successfully",
-    Duration = 5
+    Content = "Loaded successfully"
 })
 ```
 
