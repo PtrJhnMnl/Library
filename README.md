@@ -370,7 +370,6 @@ Note: Paragraphs are not saved or loaded by the config system.
 ```lua
 Window:Dialog({
     Title = "Confirm",
-    Content = "Are you sure?",
     Buttons = {
         { Title = "Yes", Callback = function() print("yes") end },
         { Title = "No", Callback = function() print("no") end }
