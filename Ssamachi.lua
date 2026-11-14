@@ -1116,22 +1116,28 @@ Components.Dialog = (function()
                 LineFrame.Parent = NewDialog.ButtonHolder
 
                 local Count = #Buttons
-                local WidthScale = (1 / Count) - (((Count - 1) * 10) / Count)
+                local AvailableWidth = NewDialog.ButtonHolder.AbsoluteSize.X - ((Count - 1) * 10)
+                
+                if AvailableWidth <= 0 then
+                    AvailableWidth = 260 - ((Count - 1) * 10)
+                end
+
+                local ButtonWidth = AvailableWidth / Count
 
                 for ButtonIdx, Btn in Buttons do
                     Btn.Frame.Parent = LineFrame
                     Btn.Frame.LayoutOrder = ButtonIdx
-                    Btn.Frame.Size = UDim2.new(WidthScale, 0, 0, 32)
+                    Btn.Frame.Size = UDim2.fromOffset(ButtonWidth, 32)
                 end
             end
 
             local LineCount = #LineKeys
-            local HolderHeight = (LineCount * 32) + ((LineCount - 1) * 8) + 24
+            local HolderHeight = (LineCount * 32) + ((LineCount - 1) * 8) + 30
 
             NewDialog.ButtonHolderFrame.Size = UDim2.new(1, 0, 0, HolderHeight)
             NewDialog.ButtonHolderFrame.Position = UDim2.new(0, 0, 1, -HolderHeight)
 
-            NewDialog.ButtonHolder.Size = UDim2.new(1, -40, 0, HolderHeight - 24)
+            NewDialog.ButtonHolder.Size = UDim2.new(1, -40, 0, HolderHeight - 30)
             NewDialog.ButtonHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
         end
 
@@ -1931,7 +1937,7 @@ Components.Window = (function()
 
             local Content = New("TextLabel", {
                 FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json"),
-                Text = DialogConfig.Content,
+                Text = DialogConfig.Content or "",
                 RichText = true,
                 TextColor3 = Color3.fromRGB(240, 240, 240),
                 TextSize = 14,
@@ -1946,30 +1952,53 @@ Components.Window = (function()
             })
 
             New("UISizeConstraint", {
-                MinSize = Vector2.new(300, 165),
+                MinSize = Vector2.new(300, 0),
                 MaxSize = Vector2.new(620, math.huge),
                 Parent = Dialog.Root,
             })
 
             local MaxWidth = math.min(620, Window.Size.X.Offset - 120)
-            local BaseWidth = math.max(300, math.min(MaxWidth, Content.TextBounds.X + 40))
+            local BaseWidth = math.max(300, math.min(MaxWidth, Content.TextBounds.X + 60))
 
             Dialog.Root.Size = UDim2.fromOffset(BaseWidth, 165)
-            ContentHolder.Size = UDim2.new(1, -40, 1, -110)
-
-            task.defer(function()
-                local ContentHeight = Content.TextBounds.Y
-                local Desired = math.clamp(ContentHeight + 110, 165, 420)
-
-                Dialog.Root.Size = UDim2.fromOffset(BaseWidth, Desired)
-                ContentHolder.CanvasSize = UDim2.fromOffset(0, ContentHeight)
-            end)
 
             for _, ButtonConfig in DialogConfig.Buttons do
                 Dialog:AddButton(ButtonConfig.Title, ButtonConfig.Callback, ButtonConfig.Line)
             end
 
             Dialog:Layout()
+
+            task.defer(function()
+                local TitleHeight = Dialog.Title.TextBounds.Y
+                local ContentHeight = 0
+
+                if DialogConfig.Content and DialogConfig.Content ~= "" then
+                    ContentHolder.Visible = true
+                    ContentHolder.CanvasSize = UDim2.fromOffset(0, Content.TextBounds.Y)
+                    ContentHeight = Content.TextBounds.Y
+                    
+                    Dialog.Title.Position = UDim2.fromOffset(20, 20)
+                    Dialog.Title.Size = UDim2.new(1, -40, 0, TitleHeight)
+                    ContentHolder.Position = UDim2.fromOffset(20, 20 + TitleHeight + 10)
+                else
+                    ContentHolder.Visible = false
+                    
+                    Dialog.Title.Position = UDim2.fromOffset(20, 0)
+                    Dialog.Title.Size = UDim2.new(1, -40, 1, -Dialog.ButtonHolderFrame.Size.Y.Offset)
+                    Dialog.Title.TextYAlignment = Enum.TextYAlignment.Center
+                end
+
+                local TopPadding = 20
+                local TopSectionHeight = TitleHeight + (ContentHeight > 0 and ContentHeight + 10 or 0)
+                local BottomSectionHeight = Dialog.ButtonHolderFrame.Size.Y.Offset
+                local Desired = TopPadding + TopSectionHeight + 25 + BottomSectionHeight
+
+                local FinalHeight = math.max(165, Desired)
+
+                Dialog.Root.Size = UDim2.fromOffset(BaseWidth, FinalHeight)
+                ContentHolder.Size = UDim2.new(1, -40, 1, -BottomSectionHeight - 20 - 60)
+            end)
+
             Dialog:Open()
         end
 
